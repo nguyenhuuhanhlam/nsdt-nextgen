@@ -96,12 +96,12 @@ function Rail() {
       NAV.map((group) => ({
         id: `group-${group.section}`,
         label: <Text maxLines={1}>{group.section}</Text>,
-        startContent: <FolderIcon />,
+        startContent: <FolderIcon width={14} height={14} />,
         isExpanded: true,
         children: group.items.map((item) => ({
           id: `nav-${item.label}`,
           label: <Text maxLines={1}>{item.label}</Text>,
-          startContent: <FileIcon />,
+          startContent: <FileIcon width={14} height={14} />,
           endContent: item.note ? (
             <Text type="supporting" size="xsm">{item.note}</Text>
           ) : null,
