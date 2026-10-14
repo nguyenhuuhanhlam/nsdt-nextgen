@@ -6,15 +6,16 @@ import { DropdownMenuItem } from '@astryxdesign/core/DropdownMenu';
 import { Heading } from '@astryxdesign/core/Heading';
 import { HStack } from '@astryxdesign/core/HStack';
 import { SideNav } from '@astryxdesign/core/SideNav';
-import { SideNavItem } from '@astryxdesign/core/SideNav';
-import { SideNavSection } from '@astryxdesign/core/SideNav';
 import { Stack } from '@astryxdesign/core/Stack';
 import { Text } from '@astryxdesign/core/Text';
 import { TextInput } from '@astryxdesign/core/TextInput';
 import { TopNav } from '@astryxdesign/core/TopNav';
+import { TreeList } from '@astryxdesign/core/TreeList';
 import { createStaticSource } from '@astryxdesign/core/Typeahead';
 import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+
+import { FileIcon, FolderIcon } from './components/icons.jsx';
 
 const NAV = [
   {
@@ -87,28 +88,37 @@ function TopBar({ onOpenPalette }) {
 
 function Rail() {
   const { hash } = useLocation();
+  const navigate = useNavigate();
   const path = hash.replace(/^#/, '') || '/';
+
+  const items = useMemo(
+    () =>
+      NAV.map((group) => ({
+        id: `group-${group.section}`,
+        label: <Text maxLines={1}>{group.section}</Text>,
+        startContent: <FolderIcon />,
+        isExpanded: true,
+        children: group.items.map((item) => ({
+          id: `nav-${item.label}`,
+          label: <Text maxLines={1}>{item.label}</Text>,
+          startContent: <FileIcon />,
+          endContent: item.note ? (
+            <Text type="supporting" size="xsm">{item.note}</Text>
+          ) : null,
+          isDisabled: !!item.disabled,
+          isSelected: !item.disabled && item.href === `#${path}`,
+          onClick: item.disabled ? undefined : () => navigate(item.href.replace(/^#/, '')),
+        })),
+      })),
+    [path, navigate],
+  );
+
   return (
     <SideNav
       label="Điều hướng chính"
       resizable={{ defaultWidth: 240, minWidth: 180, maxWidth: 400 }}
     >
-      {NAV.map((group) => (
-        <SideNavSection key={group.section} title={group.section}>
-          {group.items.map((item) => (
-            <SideNavItem
-              key={item.label}
-              label={item.label}
-              href={item.disabled ? undefined : item.href}
-              isSelected={!item.disabled && item.href === `#${path}`}
-              isDisabled={item.disabled}
-              endContent={
-                item.note ? <Text type="supporting" size="xsm">{item.note}</Text> : null
-              }
-            />
-          ))}
-        </SideNavSection>
-      ))}
+      <TreeList items={items} density="compact" />
     </SideNav>
   );
 }
