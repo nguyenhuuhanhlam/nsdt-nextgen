@@ -1,5 +1,7 @@
 import { Button } from '@astryxdesign/core/Button';
+import { ContextMenu } from '@astryxdesign/core/ContextMenu';
 import { Dialog } from '@astryxdesign/core/Dialog';
+import { DropdownMenu } from '@astryxdesign/core/DropdownMenu';
 import { Heading } from '@astryxdesign/core/Heading';
 import { HStack } from '@astryxdesign/core/HStack';
 import { IconButton } from '@astryxdesign/core/IconButton';
@@ -9,7 +11,7 @@ import { Table, pixel, proportional } from '@astryxdesign/core/Table';
 import { Text } from '@astryxdesign/core/Text';
 import { TextInput } from '@astryxdesign/core/TextInput';
 import { VStack } from '@astryxdesign/core/VStack';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import DialogTitle from '../components/dialog-title.jsx';
 import { EditIcon, PlusIcon, UserOffIcon } from '../components/icons.jsx';
@@ -27,6 +29,33 @@ function rows(list) {
     department_name: e.department.name,
     position_name: e.position.name,
   }));
+}
+
+/**
+ * Các tác vụ trên một nhân viên — DÙNG CHUNG cho cả hai nơi:
+ * - chuột phải lên row (ContextMenu)
+ * - nút menu ở cột Thao tác (DropdownMenu)
+ * Sau này thêm tác vụ mới (xem chấm công, bảng lương, ...) chỉ cần thêm vào đây.
+ */
+function employeeMenuItems(emp, { onEdit, onDeactivate }) {
+  if (!emp)
+    return [{ id: 'hint', label: 'Chuột phải lên một dòng nhân viên', isDisabled: true }];
+  return [
+    { id: 'edit', label: 'Sửa thông tin', icon: <EditIcon />, onClick: () => onEdit(emp) },
+    // TODO: thêm các tác vụ tương lai vào đây
+    { id: 'divider-1', type: 'divider' },
+    ...(emp.is_active
+      ? [
+          {
+            id: 'deactivate',
+            label: 'Cho nghỉ việc',
+            icon: <UserOffIcon />,
+            variant: 'destructive',
+            onClick: () => onDeactivate(emp),
+          },
+        ]
+      : []),
+  ];
 }
 
 function EmployeeDialog({ employee, onClose, onSave }) {
@@ -82,6 +111,9 @@ export default function Employees() {
   const [dept, setDept] = useState('');
   const [page, setPage] = useState(1);
   const [dialog, setDialog] = useState(null); // null | {mode:'add'} | {mode:'edit', employee}
+  // Nhân viên đang được mở context menu bằng chuột phải lên row.
+  const [ctxEmployee, setCtxEmployee] = useState(null);
+  const tableWrapRef = useRef(null);
 
   const filtered = useMemo(() => {
     const needle = q.trim().toLowerCase();
@@ -96,6 +128,27 @@ export default function Employees() {
 
   const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const pageRows = rows(filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE));
+
+  // Bắt row được chuột phải: native listener trên wrapper chạy trước khi
+  // ContextMenu mở menu, nên menu luôn hiện đúng tác vụ của row đó.
+  const pageRowsRef = useRef(pageRows);
+  pageRowsRef.current = pageRows;
+  useEffect(() => {
+    const el = tableWrapRef.current;
+    if (!el) return;
+    const handler = (e) => {
+      const tr = e.target?.closest?.('tbody tr');
+      const rowsNow = pageRowsRef.current;
+      if (!tr || !el.contains(tr)) {
+        setCtxEmployee(null);
+        return;
+      }
+      const idx = tr.sectionRowIndex;
+      setCtxEmployee(idx >= 0 && idx < rowsNow.length ? rowsNow[idx] : null);
+    };
+    el.addEventListener('contextmenu', handler);
+    return () => el.removeEventListener('contextmenu', handler);
+  }, []);
 
   const closeDialog = () => setDialog(null);
 
@@ -165,29 +218,26 @@ export default function Employees() {
     {
       key: 'actions',
       header: 'Thao tác',
-      width: pixel(110),
+      width: pixel(96),
       align: 'center',
       renderCell: (row) => (
-        <HStack gap={1} justify="center">
-          <IconButton
-            icon={<EditIcon />}
-            label="Sửa thông tin nhân viên"
-            tooltip="Sửa"
-            variant="ghost"
-            size="sm"
-            onClick={() => setDialog({ mode: 'edit', employee: row })}
-          />
-          {row.is_active && (
+        <DropdownMenu
+          label={`Tác vụ của ${row.full_name}`}
+          items={employeeMenuItems(row, {
+            onEdit: (emp) => setDialog({ mode: 'edit', employee: emp }),
+            onDeactivate: deactivate,
+          })}
+          renderTrigger={(props) => (
             <IconButton
-              icon={<UserOffIcon />}
-              label="Cho nghỉ việc"
-              tooltip="Cho nghỉ việc"
+              icon={<EditIcon />}
+              label="Mở menu tác vụ"
+              tooltip="Tác vụ"
               variant="ghost"
               size="sm"
-              onClick={() => deactivate(row)}
+              {...props}
             />
           )}
-        </HStack>
+        />
       ),
     },
   ];
@@ -226,25 +276,35 @@ export default function Employees() {
         <Text type="supporting">{filtered.length} nhân viên</Text>
       </HStack>
 
-      <Table
-        data={pageRows}
-        columns={columns}
-        idKey="id"
-        density="balanced"
-        textOverflow="truncate"
-        rowIndexStart={(page - 1) * PAGE_SIZE + 1}
-        rowCount={filtered.length}
-      />
+      <VStack ref={tableWrapRef} gap={3}>
+        <ContextMenu
+          label="Tác vụ nhân viên"
+          items={employeeMenuItems(ctxEmployee, {
+            onEdit: (emp) => setDialog({ mode: 'edit', employee: emp }),
+            onDeactivate: deactivate,
+          })}
+        >
+          <Table
+            data={pageRows}
+            columns={columns}
+            idKey="id"
+            density="balanced"
+            textOverflow="truncate"
+            rowIndexStart={(page - 1) * PAGE_SIZE + 1}
+            rowCount={filtered.length}
+          />
+        </ContextMenu>
 
-      <HStack gap={3} align="center" justify="end">
-        <Text type="supporting">Trang {page} / {pageCount}</Text>
-        <Button size="sm" variant="ghost" label="Trang trước" isDisabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
-          Trước
-        </Button>
-        <Button size="sm" variant="ghost" label="Trang sau" isDisabled={page >= pageCount} onClick={() => setPage((p) => p + 1)}>
-          Sau
-        </Button>
-      </HStack>
+        <HStack gap={3} align="center" justify="end">
+          <Text type="supporting">Trang {page} / {pageCount}</Text>
+          <Button size="sm" variant="ghost" label="Trang trước" isDisabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
+            Trước
+          </Button>
+          <Button size="sm" variant="ghost" label="Trang sau" isDisabled={page >= pageCount} onClick={() => setPage((p) => p + 1)}>
+            Sau
+          </Button>
+        </HStack>
+      </VStack>
 
       {dialog && (
         <EmployeeDialog
