@@ -7,6 +7,8 @@ import { HStack } from '@astryxdesign/core/HStack';
 import { IconButton } from '@astryxdesign/core/IconButton';
 import { Selector } from '@astryxdesign/core/Selector';
 import { StatusDot } from '@astryxdesign/core/StatusDot';
+import { Switch } from '@astryxdesign/core/Switch';
+import { Tab, TabList } from '@astryxdesign/core/TabList';
 import { Table, pixel, proportional } from '@astryxdesign/core/Table';
 import { Text } from '@astryxdesign/core/Text';
 import { TextInput } from '@astryxdesign/core/TextInput';
@@ -14,7 +16,7 @@ import { VStack } from '@astryxdesign/core/VStack';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import DialogTitle from '../components/dialog-title.jsx';
-import { EditIcon, PlusIcon, UserOffIcon } from '../components/icons.jsx';
+import { EditIcon, PlusIcon } from '../components/icons.jsx';
 import { makeMockEmployees } from '../lib/mock-data.js';
 
 // TODO: thay mock bằng employeesApi (src/lib/api.js) khi backend chạy.
@@ -31,34 +33,30 @@ function rows(list) {
   }));
 }
 
+
 /**
  * Các tác vụ trên một nhân viên — DÙNG CHUNG cho cả hai nơi:
  * - chuột phải lên row (ContextMenu)
  * - nút menu ở cột Thao tác (DropdownMenu)
  * Sau này thêm tác vụ mới (xem chấm công, bảng lương, ...) chỉ cần thêm vào đây.
+ * (Cho nghỉ việc hiện nằm trong tab "Nghỉ việc" của dialog Sửa, không ở menu.)
  */
-function employeeMenuItems(emp, { onEdit, onDeactivate }) {
-  if (!emp)
-    return [{ id: 'hint', label: 'Chuột phải lên một dòng nhân viên', isDisabled: true }];
+function employeeMenuItems(emp, { onEdit }) {
+  if (!emp) return [];
   return [
     { id: 'edit', label: 'Sửa thông tin', icon: <EditIcon />, onClick: () => onEdit(emp) },
     // TODO: thêm các tác vụ tương lai vào đây
-    { id: 'divider-1', type: 'divider' },
-    ...(emp.is_active
-      ? [
-          {
-            id: 'deactivate',
-            label: 'Cho nghỉ việc',
-            icon: <UserOffIcon />,
-            variant: 'destructive',
-            onClick: () => onDeactivate(emp),
-          },
-        ]
-      : []),
   ];
 }
 
+function todayISO() {
+  return new Date().toISOString().slice(0, 10);
+}
+
 function EmployeeDialog({ employee, onClose, onSave }) {
+  const isEdit = Boolean(employee);
+  // Tab đang mở. Sau này thêm tác vụ mới = thêm Tab + panel tương ứng ở đây.
+  const [tab, setTab] = useState('info');
   const [form, setForm] = useState(() => ({
     employee_code: employee?.employee_code ?? '',
     first_name: employee?.first_name ?? '',
@@ -69,38 +67,82 @@ function EmployeeDialog({ employee, onClose, onSave }) {
     position_name: employee?.position.name ?? 'Công nhân',
     join_date: employee?.join_date ?? '',
     salary_coefficient: employee?.salary_coefficient ?? '1.00',
+    is_active: employee?.is_active ?? true,
+    terminated_date: employee?.terminated_date ?? '',
   }));
-  const set = (k) => (v) => setForm((f) => ({ ...f, [k]: v }));
-  const isEdit = Boolean(employee);
+  const set = (k) => (v) => setForm((f) => {
+    const next = { ...f, [k]: v };
+    // Tắt "đang làm việc" mà chưa có ngày nghỉ → mặc định hôm nay.
+    if (k === 'is_active' && v === false && !next.terminated_date) {
+      next.terminated_date = todayISO();
+    }
+    return next;
+  });
 
   return (
-    <Dialog isOpen onOpenChange={(open) => !open && onClose()} width={560} maxHeight="85dvh">
+    <Dialog isOpen onOpenChange={(open) => !open && onClose()} width={600} maxHeight="85dvh">
       <DialogTitle onClose={onClose}>
         {isEdit ? 'Sửa thông tin nhân viên' : 'Thêm nhân viên'}
       </DialogTitle>
+      <TabList value={tab} onChange={setTab} hasDivider>
+        <Tab value="info" label="Thông tin chung" />
+        {isEdit && <Tab value="leave" label="Nghỉ việc" />}
+        {/* TODO: thêm tab tác vụ tương lai ở đây */}
+      </TabList>
       <VStack gap={3} padding={4}>
-        <HStack gap={3}>
-          <TextInput label="Mã nhân viên" value={form.employee_code} onChange={set('employee_code')} isDisabled={isEdit} isRequired width="100%" />
-          <Selector label="Giới tính" value={form.gender} onChange={set('gender')} options={['Nam', 'Nữ']} width="100%" />
-        </HStack>
-        <HStack gap={3}>
-          <TextInput label="Họ" value={form.first_name} onChange={set('first_name')} isRequired width="100%" />
-          <TextInput label="Tên" value={form.last_name} onChange={set('last_name')} isRequired width="100%" />
-        </HStack>
-        <HStack gap={3}>
-          <TextInput label="Ngày sinh" value={form.birth_date} onChange={set('birth_date')} placeholder="yyyy-mm-dd" width="100%" />
-          <TextInput label="Ngày vào làm" value={form.join_date} onChange={set('join_date')} placeholder="yyyy-mm-dd" width="100%" />
-        </HStack>
-        <HStack gap={3}>
-          <Selector label="Đơn vị" value={form.department_name} onChange={set('department_name')} options={DEPARTMENTS} hasSearch width="100%" />
-          <TextInput label="Chức vụ" value={form.position_name} onChange={set('position_name')} width="100%" />
-        </HStack>
-        <TextInput label="Hệ số lương" value={form.salary_coefficient} onChange={set('salary_coefficient')} width={160} />
-        <HStack gap={2} justify="end">
-          <Button variant="ghost" label="Hủy" onClick={onClose}>Hủy</Button>
-          <Button variant="primary" label="Lưu" onClick={() => onSave(form)}>Lưu</Button>
-        </HStack>
+        {tab === 'info' && (
+          <>
+            <HStack gap={3}>
+              <TextInput label="Mã nhân viên" value={form.employee_code} onChange={set('employee_code')} isDisabled={isEdit} isRequired width="100%" />
+              <Selector label="Giới tính" value={form.gender} onChange={set('gender')} options={['Nam', 'Nữ']} width="100%" />
+            </HStack>
+            <HStack gap={3}>
+              <TextInput label="Họ" value={form.first_name} onChange={set('first_name')} isRequired width="100%" />
+              <TextInput label="Tên" value={form.last_name} onChange={set('last_name')} isRequired width="100%" />
+            </HStack>
+            <HStack gap={3}>
+              <TextInput label="Ngày sinh" value={form.birth_date} onChange={set('birth_date')} placeholder="yyyy-mm-dd" width="100%" />
+              <TextInput label="Ngày vào làm" value={form.join_date} onChange={set('join_date')} placeholder="yyyy-mm-dd" width="100%" />
+            </HStack>
+            <HStack gap={3}>
+              <Selector label="Đơn vị" value={form.department_name} onChange={set('department_name')} options={DEPARTMENTS} hasSearch width="100%" />
+              <TextInput label="Chức vụ" value={form.position_name} onChange={set('position_name')} width="100%" />
+            </HStack>
+            <TextInput label="Hệ số lương" value={form.salary_coefficient} onChange={set('salary_coefficient')} width={160} />
+          </>
+        )}
+        {tab === 'leave' && isEdit && (
+          <>
+            <HStack gap={2} align="center">
+              <StatusDot
+                variant={form.is_active ? 'success' : 'error'}
+                label={form.is_active ? 'Đang làm việc' : 'Đã nghỉ việc'}
+                tooltip={form.is_active ? 'Đang làm việc' : 'Đã nghỉ việc'}
+              />
+              <Text>{form.is_active ? 'Nhân viên đang làm việc.' : `Nhân viên đã nghỉ việc${form.terminated_date ? ` từ ngày ${form.terminated_date}` : ''}.`}</Text>
+            </HStack>
+            <Switch
+              label="Đang làm việc"
+              value={form.is_active}
+              onChange={set('is_active')}
+              description="Tắt để cho nhân viên nghỉ việc. Có thể bật lại bất cứ lúc nào."
+            />
+            {!form.is_active && (
+              <TextInput
+                label="Ngày nghỉ việc"
+                value={form.terminated_date}
+                onChange={set('terminated_date')}
+                placeholder="yyyy-mm-dd"
+                width={200}
+              />
+            )}
+          </>
+        )}
       </VStack>
+      <HStack gap={2} justify="end" padding={4}>
+        <Button variant="ghost" label="Hủy" onClick={onClose}>Hủy</Button>
+        <Button variant="primary" label="Lưu" onClick={() => onSave(form)}>Lưu</Button>
+      </HStack>
     </Dialog>
   );
 }
@@ -153,44 +195,31 @@ export default function Employees() {
   const closeDialog = () => setDialog(null);
 
   const saveEmployee = (form) => {
+    const base = {
+      first_name: form.first_name,
+      last_name: form.last_name,
+      full_name: `${form.first_name} ${form.last_name}`.trim(),
+      card_id: null,
+      gender: form.gender,
+      birth_date: form.birth_date || null,
+      department: { id: 0, name: form.department_name },
+      position: { id: 0, name: form.position_name },
+      job_title: null,
+      join_date: form.join_date || null,
+      salary_coefficient: form.salary_coefficient,
+      is_active: form.is_active,
+      terminated_date: form.is_active ? null : form.terminated_date || null,
+    };
     if (dialog?.mode === 'add') {
       const n = Math.max(...data.map((e) => e.id)) + 1;
-      setData((d) => [
-        ...d,
-        {
-          id: n,
-          ...form,
-          full_name: `${form.first_name} ${form.last_name}`.trim(),
-          card_id: null,
-          department: { id: 0, name: form.department_name },
-          position: { id: 0, name: form.position_name },
-          job_title: null,
-          is_active: true,
-          terminated_date: null,
-        },
-      ]);
+      setData((d) => [...d, { id: n, employee_code: form.employee_code, ...base }]);
     } else if (dialog?.mode === 'edit') {
       setData((d) =>
-        d.map((e) =>
-          e.id === dialog.employee.id
-            ? {
-                ...e,
-                ...form,
-                full_name: `${form.first_name} ${form.last_name}`.trim(),
-                department: { ...e.department, name: form.department_name },
-                position: { ...e.position, name: form.position_name },
-              }
-            : e,
-        ),
+        d.map((e) => (e.id === dialog.employee.id ? { ...e, ...base } : e)),
       );
     }
     closeDialog();
     setPage(1);
-  };
-
-  const deactivate = (employee) => {
-    if (!window.confirm(`Cho nhân viên ${employee.full_name} (${employee.employee_code}) nghỉ việc?`)) return;
-    setData((d) => d.map((e) => (e.id === employee.id ? { ...e, is_active: false } : e)));
   };
 
   const columns = [
@@ -225,7 +254,6 @@ export default function Employees() {
           label={`Tác vụ của ${row.full_name}`}
           items={employeeMenuItems(row, {
             onEdit: (emp) => setDialog({ mode: 'edit', employee: emp }),
-            onDeactivate: deactivate,
           })}
           renderTrigger={(props) => (
             <IconButton
@@ -281,7 +309,6 @@ export default function Employees() {
           label="Tác vụ nhân viên"
           items={employeeMenuItems(ctxEmployee, {
             onEdit: (emp) => setDialog({ mode: 'edit', employee: emp }),
-            onDeactivate: deactivate,
           })}
         >
           <Table
