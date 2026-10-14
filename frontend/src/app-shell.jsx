@@ -15,8 +15,7 @@ import { createStaticSource } from '@astryxdesign/core/Typeahead';
 import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
-import { FileIcon, FolderIcon } from './components/icons.jsx';
-
+import { FolderIcon } from './components/icons.jsx';
 const NAV = [
   {
     section: 'Tổng quan',
@@ -101,7 +100,6 @@ function Rail() {
         children: group.items.map((item) => ({
           id: `nav-${item.label}`,
           label: <Text maxLines={1}>{item.label}</Text>,
-          startContent: <FileIcon width={14} height={14} />,
           endContent: item.note ? (
             <Text type="supporting" size="xsm">{item.note}</Text>
           ) : null,
