@@ -50,3 +50,20 @@ export function makeMockEmployees(count = 60) {
     };
   });
 }
+
+const CONG_VIEC = ['May', 'Cắt vải', 'Là/Ủi', 'Đóng gói', 'Kiểm hàng', 'Thủ kho'];
+const TINH_THANH = [
+  'TP. Hồ Chí Minh', 'Hà Nội', 'Hải Phòng', 'Đà Nẵng', 'Cần Thơ',
+  'Bình Dương', 'Đồng Nai', 'Long An', 'Tây Ninh', 'Bà Rịa - Vũng Tàu',
+];
+
+/** Danh mục dạng [{id, name}] theo key dùng trong route /catalogs/:kind. */
+export function makeMockCatalogs() {
+  const asItems = (arr) => arr.map((name, i) => ({ id: i + 1, name }));
+  return {
+    departments: asItems(DON_VI),
+    positions: asItems(CHUC_VU),
+    'job-titles': asItems(CONG_VIEC),
+    provinces: asItems(TINH_THANH),
+  };
+}

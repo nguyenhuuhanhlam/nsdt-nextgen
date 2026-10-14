@@ -48,6 +48,21 @@ class JobTitleRead(JobTitleBase):
     created_at: datetime
 
 
+class ProvinceBase(BaseModel):
+    name: str = Field(max_length=100)
+
+
+class ProvinceCreate(ProvinceBase):
+    pass
+
+
+class ProvinceRead(ProvinceBase):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    created_at: datetime
+
+
 class EmployeeBase(BaseModel):
     employee_code: str = Field(max_length=16)
     card_id: int | None = None

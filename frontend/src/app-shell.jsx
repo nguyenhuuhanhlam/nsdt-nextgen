@@ -23,6 +23,15 @@ const NAV = [
     items: [{ label: 'Quản lý nhân viên', href: '#/employees' }],
   },
   {
+    section: 'Danh mục',
+    items: [
+      { label: 'Đơn vị', href: '#/catalogs/departments' },
+      { label: 'Chức vụ', href: '#/catalogs/positions' },
+      { label: 'Công việc', href: '#/catalogs/job-titles' },
+      { label: 'Tỉnh thành', href: '#/catalogs/provinces' },
+    ],
+  },
+  {
     section: 'Chấm công',
     items: [{ label: 'Dữ liệu chấm công', href: '#/attendance', disabled: true, note: 'Sắp có' }],
   },
