@@ -272,7 +272,7 @@ export default function Employees() {
 
   return (
     <VStack gap={4}>
-      <HStack justify="space-between" align="center" width="100%">
+      <HStack justify="between" align="center" width="100%">
         <Heading level={4} weight="bold">Quản lý nhân viên</Heading>
         <Button variant="primary" label="Thêm nhân viên" icon={<PlusIcon />} onClick={() => setDialog({ mode: 'add' })}>
           Thêm nhân viên
