@@ -305,7 +305,7 @@ export default function Employees() {
         <Text type="supporting">{filtered.length} nhân viên</Text>
       </HStack>
 
-      <VStack ref={tableWrapRef} gap={3}>
+      <VStack ref={tableWrapRef} gap={3} paddingBlockStart={4}>
         <ContextMenu
           label="Tác vụ nhân viên"
           items={employeeMenuItems(ctxEmployee, {
@@ -318,6 +318,8 @@ export default function Employees() {
             idKey="id"
             density="balanced"
             textOverflow="truncate"
+            verticalAlign="middle"
+            hasHover
             rowIndexStart={(page - 1) * PAGE_SIZE + 1}
             rowCount={filtered.length}
           />
