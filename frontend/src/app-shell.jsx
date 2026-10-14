@@ -51,7 +51,7 @@ function TopBar() {
             width={240}
           />
           <DropdownMenu
-            trigger={<Button variant="ghost">Tài khoản</Button>}
+            trigger={<Button variant="ghost" label="Tài khoản">Tài khoản</Button>}
           >
             <DropdownMenuItem label="Quản trị viên" description="admin@nsdt.local" />
             <DropdownMenuItem label="Đăng xuất" onClick={() => {}} />

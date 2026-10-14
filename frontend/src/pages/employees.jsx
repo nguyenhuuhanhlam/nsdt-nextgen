@@ -2,6 +2,7 @@ import { Button } from '@astryxdesign/core/Button';
 import { Dialog } from '@astryxdesign/core/Dialog';
 import { Heading } from '@astryxdesign/core/Heading';
 import { HStack } from '@astryxdesign/core/HStack';
+import { IconButton } from '@astryxdesign/core/IconButton';
 import { Selector } from '@astryxdesign/core/Selector';
 import { StatusDot } from '@astryxdesign/core/StatusDot';
 import { Table, pixel, proportional } from '@astryxdesign/core/Table';
@@ -11,6 +12,7 @@ import { VStack } from '@astryxdesign/core/VStack';
 import { useMemo, useState } from 'react';
 
 import DialogTitle from '../components/dialog-title.jsx';
+import { EditIcon, PlusIcon, UserOffIcon } from '../components/icons.jsx';
 import { makeMockEmployees } from '../lib/mock-data.js';
 
 // TODO: thay mock bằng employeesApi (src/lib/api.js) khi backend chạy.
@@ -66,8 +68,8 @@ function EmployeeDialog({ employee, onClose, onSave }) {
         </HStack>
         <TextInput label="Hệ số lương" value={form.salary_coefficient} onChange={set('salary_coefficient')} width={160} />
         <HStack gap={2} justify="end">
-          <Button variant="ghost" onClick={onClose}>Hủy</Button>
-          <Button variant="primary" onClick={() => onSave(form)}>Lưu</Button>
+          <Button variant="ghost" label="Hủy" onClick={onClose}>Hủy</Button>
+          <Button variant="primary" label="Lưu" onClick={() => onSave(form)}>Lưu</Button>
         </HStack>
       </VStack>
     </Dialog>
@@ -163,16 +165,27 @@ export default function Employees() {
     {
       key: 'actions',
       header: 'Thao tác',
-      width: pixel(170),
+      width: pixel(110),
+      align: 'center',
       renderCell: (row) => (
-        <HStack gap={2}>
-          <Button size="sm" variant="ghost" onClick={() => setDialog({ mode: 'edit', employee: row })}>
-            Sửa
-          </Button>
+        <HStack gap={1} justify="center">
+          <IconButton
+            icon={<EditIcon />}
+            label="Sửa thông tin nhân viên"
+            tooltip="Sửa"
+            variant="ghost"
+            size="sm"
+            onClick={() => setDialog({ mode: 'edit', employee: row })}
+          />
           {row.is_active && (
-            <Button size="sm" variant="ghost" onClick={() => deactivate(row)}>
-              Nghỉ việc
-            </Button>
+            <IconButton
+              icon={<UserOffIcon />}
+              label="Cho nghỉ việc"
+              tooltip="Cho nghỉ việc"
+              variant="ghost"
+              size="sm"
+              onClick={() => deactivate(row)}
+            />
           )}
         </HStack>
       ),
@@ -183,7 +196,7 @@ export default function Employees() {
     <VStack gap={4}>
       <HStack justify="space-between" align="center">
         <Heading level={4} weight="bold">Quản lý nhân viên</Heading>
-        <Button variant="primary" onClick={() => setDialog({ mode: 'add' })}>
+        <Button variant="primary" label="Thêm nhân viên" icon={<PlusIcon />} onClick={() => setDialog({ mode: 'add' })}>
           Thêm nhân viên
         </Button>
       </HStack>
@@ -225,10 +238,10 @@ export default function Employees() {
 
       <HStack gap={3} align="center" justify="end">
         <Text type="supporting">Trang {page} / {pageCount}</Text>
-        <Button size="sm" variant="ghost" isDisabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
+        <Button size="sm" variant="ghost" label="Trang trước" isDisabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
           Trước
         </Button>
-        <Button size="sm" variant="ghost" isDisabled={page >= pageCount} onClick={() => setPage((p) => p + 1)}>
+        <Button size="sm" variant="ghost" label="Trang sau" isDisabled={page >= pageCount} onClick={() => setPage((p) => p + 1)}>
           Sau
         </Button>
       </HStack>
