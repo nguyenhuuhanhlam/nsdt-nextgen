@@ -17,6 +17,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 
 import DialogTitle from '../components/dialog-title.jsx';
 import { EditIcon, PlusIcon } from '../components/icons.jsx';
+import { formatDate, parseDateInput } from '../lib/format.js';
 import { makeMockEmployees } from '../lib/mock-data.js';
 
 // TODO: thay mock bằng employeesApi (src/lib/api.js) khi backend chạy.
@@ -101,8 +102,8 @@ function EmployeeDialog({ employee, onClose, onSave }) {
               <TextInput label="Tên" value={form.last_name} onChange={set('last_name')} isRequired width="100%" />
             </HStack>
             <HStack gap={3}>
-              <TextInput label="Ngày sinh" value={form.birth_date} onChange={set('birth_date')} placeholder="yyyy-mm-dd" width="100%" />
-              <TextInput label="Ngày vào làm" value={form.join_date} onChange={set('join_date')} placeholder="yyyy-mm-dd" width="100%" />
+              <TextInput label="Ngày sinh" value={formatDate(form.birth_date)} onChange={(v) => set('birth_date')(parseDateInput(v))} placeholder="dd-mm-yyyy" width="100%" />
+              <TextInput label="Ngày vào làm" value={formatDate(form.join_date)} onChange={(v) => set('join_date')(parseDateInput(v))} placeholder="dd-mm-yyyy" width="100%" />
             </HStack>
             <HStack gap={3}>
               <Selector label="Đơn vị" value={form.department_name} onChange={set('department_name')} options={DEPARTMENTS} hasSearch width="100%" />
@@ -119,7 +120,7 @@ function EmployeeDialog({ employee, onClose, onSave }) {
                 label={form.is_active ? 'Đang làm việc' : 'Đã nghỉ việc'}
                 tooltip={form.is_active ? 'Đang làm việc' : 'Đã nghỉ việc'}
               />
-              <Text>{form.is_active ? 'Nhân viên đang làm việc.' : `Nhân viên đã nghỉ việc${form.terminated_date ? ` từ ngày ${form.terminated_date}` : ''}.`}</Text>
+              <Text>{form.is_active ? 'Nhân viên đang làm việc.' : `Nhân viên đã nghỉ việc${form.terminated_date ? ` từ ngày ${formatDate(form.terminated_date)}` : ''}.`}</Text>
             </HStack>
             <Switch
               label="Đang làm việc"
@@ -130,9 +131,9 @@ function EmployeeDialog({ employee, onClose, onSave }) {
             {!form.is_active && (
               <TextInput
                 label="Ngày nghỉ việc"
-                value={form.terminated_date}
-                onChange={set('terminated_date')}
-                placeholder="yyyy-mm-dd"
+                value={formatDate(form.terminated_date)}
+                onChange={(v) => set('terminated_date')(parseDateInput(v))}
+                placeholder="dd-mm-yyyy"
                 width={200}
               />
             )}
@@ -226,10 +227,10 @@ export default function Employees() {
     { key: 'employee_code', header: 'Mã NV', width: pixel(100) },
     { key: 'full_name', header: 'Họ tên', width: proportional(2) },
     { key: 'gender', header: 'Giới tính', width: pixel(90), align: 'center' },
-    { key: 'birth_date', header: 'Ngày sinh', width: pixel(110) },
+    { key: 'birth_date', header: 'Ngày sinh', width: pixel(110), renderCell: (row) => formatDate(row.birth_date) },
     { key: 'department_name', header: 'Đơn vị', width: proportional(2) },
     { key: 'position_name', header: 'Chức vụ', width: proportional(1) },
-    { key: 'join_date', header: 'Ngày vào làm', width: pixel(110) },
+    { key: 'join_date', header: 'Ngày vào làm', width: pixel(110), renderCell: (row) => formatDate(row.join_date) },
     { key: 'salary_coefficient', header: 'HSL', width: pixel(70), align: 'center' },
     {
       key: 'is_active',
