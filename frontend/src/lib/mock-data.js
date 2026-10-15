@@ -42,7 +42,7 @@ export function makeMockEmployees(count = 60) {
       birth_date: `19${85 + Math.floor(rand() * 15)}-0${1 + Math.floor(rand() * 9)}-1${Math.floor(rand() * 9)}`,
       department: { id: (n % DON_VI.length) + 1, name: DON_VI[n % DON_VI.length] },
       position: { id: (n % CHUC_VU.length) + 1, name: CHUC_VU[n % CHUC_VU.length] },
-      job_title: null,
+      job_title: { id: (n % CONG_VIEC.length) + 1, name: CONG_VIEC[n % CONG_VIEC.length] },
       join_date: `202${Math.floor(rand() * 4)}-0${1 + Math.floor(rand() * 9)}-15`,
       salary_coefficient: (1.5 + rand() * 2).toFixed(2),
       is_active: active,

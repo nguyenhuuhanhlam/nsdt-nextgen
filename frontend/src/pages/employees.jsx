@@ -18,19 +18,21 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import DialogTitle from '../components/dialog-title.jsx';
 import { EditIcon, PlusIcon } from '../components/icons.jsx';
 import { formatDate, parseDateInput } from '../lib/format.js';
-import { makeMockEmployees } from '../lib/mock-data.js';
+import { makeMockCatalogs, makeMockEmployees } from '../lib/mock-data.js';
 
 // TODO: thay mock bằng employeesApi (src/lib/api.js) khi backend chạy.
 const ALL = makeMockEmployees(60);
 const PAGE_SIZE = 15;
 
 const DEPARTMENTS = [...new Set(ALL.map((e) => e.department.name))].sort();
+const JOB_TITLES = makeMockCatalogs()['job-titles'].map((j) => j.name).sort();
 
 function rows(list) {
   return list.map((e) => ({
     ...e,
     department_name: e.department.name,
     position_name: e.position.name,
+    job_title_name: e.job_title?.name ?? '',
   }));
 }
 
@@ -60,12 +62,14 @@ function EmployeeDialog({ employee, onClose, onSave }) {
   const [tab, setTab] = useState('info');
   const [form, setForm] = useState(() => ({
     employee_code: employee?.employee_code ?? '',
+    card_id: employee?.card_id != null ? String(employee.card_id) : '',
     first_name: employee?.first_name ?? '',
     last_name: employee?.last_name ?? '',
     gender: employee?.gender ?? 'Nam',
     birth_date: employee?.birth_date ?? '',
     department_name: employee?.department.name ?? DEPARTMENTS[0],
     position_name: employee?.position.name ?? 'Công nhân',
+    job_title_name: employee?.job_title?.name ?? '',
     join_date: employee?.join_date ?? '',
     salary_coefficient: employee?.salary_coefficient ?? '1.00',
     is_active: employee?.is_active ?? true,
@@ -108,6 +112,10 @@ function EmployeeDialog({ employee, onClose, onSave }) {
             <HStack gap={3}>
               <Selector label="Đơn vị" value={form.department_name} onChange={set('department_name')} options={DEPARTMENTS} hasSearch width="100%" />
               <TextInput label="Chức vụ" value={form.position_name} onChange={set('position_name')} width="100%" />
+            </HStack>
+            <HStack gap={3}>
+              <TextInput label="Mã thẻ (thẻ từ)" value={form.card_id} onChange={set('card_id')} placeholder="Số thẻ chấm công" width="100%" />
+              <Selector label="Công việc" value={form.job_title_name} onChange={set('job_title_name')} options={JOB_TITLES} hasSearch width="100%" />
             </HStack>
             <TextInput label="Hệ số lương" value={form.salary_coefficient} onChange={set('salary_coefficient')} width={160} />
           </>
@@ -164,7 +172,8 @@ export default function Employees() {
       (e) =>
         (!needle ||
           e.employee_code.toLowerCase().includes(needle) ||
-          e.full_name.toLowerCase().includes(needle)) &&
+          e.full_name.toLowerCase().includes(needle) ||
+          String(e.card_id ?? '').includes(needle)) &&
         (!dept || e.department.name === dept),
     );
   }, [data, q, dept]);
@@ -200,12 +209,12 @@ export default function Employees() {
       first_name: form.first_name,
       last_name: form.last_name,
       full_name: `${form.first_name} ${form.last_name}`.trim(),
-      card_id: null,
+      card_id: form.card_id.trim() === '' ? null : Number(form.card_id),
       gender: form.gender,
       birth_date: form.birth_date || null,
       department: { id: 0, name: form.department_name },
       position: { id: 0, name: form.position_name },
-      job_title: null,
+      job_title: form.job_title_name ? { id: 0, name: form.job_title_name } : null,
       join_date: form.join_date || null,
       salary_coefficient: form.salary_coefficient,
       is_active: form.is_active,
@@ -225,11 +234,13 @@ export default function Employees() {
 
   const columns = [
     { key: 'employee_code', header: 'Mã NV', width: pixel(100) },
+    { key: 'card_id', header: 'Mã thẻ', width: pixel(100) },
     { key: 'full_name', header: 'Họ tên', width: proportional(2) },
     { key: 'gender', header: 'Giới tính', width: pixel(90), align: 'center' },
     { key: 'birth_date', header: 'Ngày sinh', width: pixel(110), renderCell: (row) => formatDate(row.birth_date) },
     { key: 'department_name', header: 'Đơn vị', width: proportional(2) },
     { key: 'position_name', header: 'Chức vụ', width: proportional(1) },
+    { key: 'job_title_name', header: 'Công việc', width: proportional(1) },
     { key: 'join_date', header: 'Ngày vào làm', width: pixel(110), renderCell: (row) => formatDate(row.join_date) },
     { key: 'salary_coefficient', header: 'HSL', width: pixel(70), align: 'center' },
     {
