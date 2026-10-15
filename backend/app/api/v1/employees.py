@@ -43,6 +43,13 @@ def list_employees(
         selectinload(Employee.department),
         selectinload(Employee.position),
         selectinload(Employee.job_title),
+        selectinload(Employee.birth_place),
+        selectinload(Employee.id_issue_place),
+        selectinload(Employee.nationality),
+        selectinload(Employee.ethnicity),
+        selectinload(Employee.education),
+        selectinload(Employee.marital_status),
+        selectinload(Employee.contract_type),
     )
     if q:
         like = f"%{q}%"

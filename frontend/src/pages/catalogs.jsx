@@ -24,6 +24,11 @@ const CATALOGS = {
   'job-titles': { title: 'Công việc', itemLabel: 'công việc' },
   provinces: { title: 'Tỉnh thành', itemLabel: 'tỉnh thành' },
   'maternity-types': { title: 'Loại thai sản', itemLabel: 'loại thai sản' },
+  nationalities: { title: 'Quốc tịch', itemLabel: 'quốc tịch' },
+  ethnicities: { title: 'Dân tộc', itemLabel: 'dân tộc' },
+  educations: { title: 'Học vấn', itemLabel: 'học vấn' },
+  'marital-statuses': { title: 'Hôn nhân', itemLabel: 'hôn nhân' },
+  'contract-types': { title: 'Loại HĐLĐ', itemLabel: 'loại HĐLĐ' },
 };
 
 function catalogMenuItems(cfg, item, onEdit, onDelete) {

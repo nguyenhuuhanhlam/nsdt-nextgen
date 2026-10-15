@@ -87,6 +87,9 @@ function LeaveDialog({ leave, employees, types, onClose, onSave }) {
     [employees],
   );
 
+  // Đơn vị của nhân viên đang chọn — hiển thị readonly như form cũ.
+  const selectedEmployee = employees.find((e) => String(e.id) === form.employee_id);
+
   const save = async () => {
     if (!form.employee_id) return setError('Hãy chọn nhân viên.');
     if (!form.type_id) return setError('Hãy chọn loại thai sản.');
@@ -117,16 +120,26 @@ function LeaveDialog({ leave, employees, types, onClose, onSave }) {
         {isEdit ? 'Sửa hồ sơ thai sản' : 'Thêm hồ sơ thai sản'}
       </DialogTitle>
       <VStack gap={3} padding={4}>
-        <Selector
-          label="Nhân viên"
-          value={form.employee_id}
-          onChange={set('employee_id')}
-          options={employeeOptions}
-          hasSearch
-          isRequired
-          placeholder="Chọn nhân viên"
-          width="100%"
-        />
+        <HStack gap={3}>
+          <Selector
+            label="Nhân viên"
+            value={form.employee_id}
+            onChange={set('employee_id')}
+            options={employeeOptions}
+            hasSearch
+            isRequired
+            isDisabled={isEdit}
+            placeholder="Chọn nhân viên"
+            width="100%"
+          />
+          <TextInput
+            label="Đơn vị"
+            value={selectedEmployee?.department?.name ?? ''}
+            onChange={() => {}}
+            isDisabled
+            width="100%"
+          />
+        </HStack>
         <HStack gap={3}>
           <Selector
             label="Loại thai sản"

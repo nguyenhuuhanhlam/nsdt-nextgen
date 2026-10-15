@@ -5672,5 +5672,163 @@
  "_meta": {
   "note": "Dữ liệu mẫu đã ẨN DANH HÓA: họ tên là dữ liệu giả theo phân bố thực tế (seed 20261015); không gồm CMND/địa chỉ; ngày zero kiểu '1985-00-00' -> null.",
   "source": "ns_nhansu (mẫu ngẫu nhiên 300/1027: 240 đang làm + 60 đã nghỉ)"
- }
+ },
+ "nationalities": [
+  {
+   "old_id": 1,
+   "name": "Việt Nam"
+  },
+  {
+   "old_id": 2,
+   "name": "Campuchia"
+  },
+  {
+   "old_id": 3,
+   "name": "Usa"
+  },
+  {
+   "old_id": 4,
+   "name": "Trung Quốc"
+  }
+ ],
+ "ethnicities": [
+  {
+   "old_id": 1,
+   "name": "Kinh"
+  },
+  {
+   "old_id": 2,
+   "name": "Khơ Me"
+  },
+  {
+   "old_id": 3,
+   "name": "Hoa"
+  },
+  {
+   "old_id": 4,
+   "name": "Chăm"
+  },
+  {
+   "old_id": 5,
+   "name": "Mường"
+  },
+  {
+   "old_id": 6,
+   "name": "Tày"
+  }
+ ],
+ "educations": [
+  {
+   "old_id": 1,
+   "name": "Lớp 1"
+  },
+  {
+   "old_id": 2,
+   "name": "Lớp 2"
+  },
+  {
+   "old_id": 3,
+   "name": "Lớp 3"
+  },
+  {
+   "old_id": 4,
+   "name": "Lớp 4"
+  },
+  {
+   "old_id": 5,
+   "name": "Lớp 5"
+  },
+  {
+   "old_id": 6,
+   "name": "Lớp 6"
+  },
+  {
+   "old_id": 7,
+   "name": "Lớp 7"
+  },
+  {
+   "old_id": 8,
+   "name": "Lớp 8"
+  },
+  {
+   "old_id": 9,
+   "name": "Lớp 9"
+  },
+  {
+   "old_id": 10,
+   "name": "Lớp 10"
+  },
+  {
+   "old_id": 11,
+   "name": "Lớp 11"
+  },
+  {
+   "old_id": 12,
+   "name": "Lớp 12"
+  },
+  {
+   "old_id": 13,
+   "name": "Trung Cấp"
+  },
+  {
+   "old_id": 14,
+   "name": "Cao Đẳng"
+  },
+  {
+   "old_id": 15,
+   "name": "Đại Học"
+  },
+  {
+   "old_id": 16,
+   "name": "Tiến Sỉ"
+  }
+ ],
+ "marital_statuses": [
+  {
+   "old_id": 1,
+   "name": "Độc Thân"
+  },
+  {
+   "old_id": 2,
+   "name": "Ly Hôn"
+  },
+  {
+   "old_id": 3,
+   "name": "Kết Hôn"
+  },
+  {
+   "old_id": 4,
+   "name": "Không Xác Định"
+  }
+ ],
+ "contract_types": [
+  {
+   "old_id": 1,
+   "name": "Thử Việc 1 Tháng"
+  },
+  {
+   "old_id": 2,
+   "name": "Ngắn Hạn Dưới 3 Tháng"
+  },
+  {
+   "old_id": 3,
+   "name": "Thời Hạn Xác Định 12 Tháng"
+  },
+  {
+   "old_id": 4,
+   "name": "3 Năm"
+  },
+  {
+   "old_id": 5,
+   "name": "Thời Vụ"
+  },
+  {
+   "old_id": 6,
+   "name": "Không Thử Việc"
+  },
+  {
+   "old_id": 7,
+   "name": "Thời Hạn Không Xác Định"
+  }
+ ]
 }

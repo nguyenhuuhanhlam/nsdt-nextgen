@@ -102,6 +102,81 @@ class MaternityType(Base):
     )
 
 
+class Nationality(Base):
+    """Quốc tịch (từ `ns_quoctich`)."""
+
+    __tablename__ = "nationalities"
+    __table_args__ = MYSQL_TABLE_ARGS
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    name: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.now(), nullable=False
+    )
+
+    employees: Mapped[list["Employee"]] = relationship(back_populates="nationality")
+
+
+class Ethnicity(Base):
+    """Dân tộc (từ `ns_dantoc`)."""
+
+    __tablename__ = "ethnicities"
+    __table_args__ = MYSQL_TABLE_ARGS
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    name: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.now(), nullable=False
+    )
+
+    employees: Mapped[list["Employee"]] = relationship(back_populates="ethnicity")
+
+
+class Education(Base):
+    """Trình độ học vấn (từ `ns_hocvan`)."""
+
+    __tablename__ = "educations"
+    __table_args__ = MYSQL_TABLE_ARGS
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    name: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.now(), nullable=False
+    )
+
+    employees: Mapped[list["Employee"]] = relationship(back_populates="education")
+
+
+class MaritalStatus(Base):
+    """Tình trạng hôn nhân (từ `ns_honnhan`)."""
+
+    __tablename__ = "marital_statuses"
+    __table_args__ = MYSQL_TABLE_ARGS
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    name: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.now(), nullable=False
+    )
+
+    employees: Mapped[list["Employee"]] = relationship(back_populates="marital_status")
+
+
+class ContractType(Base):
+    """Loại hợp đồng lao động (từ `ns_hdld`)."""
+
+    __tablename__ = "contract_types"
+    __table_args__ = MYSQL_TABLE_ARGS
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    name: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.now(), nullable=False
+    )
+
+    employees: Mapped[list["Employee"]] = relationship(back_populates="contract_type")
+
+
 class MaternityLeave(Base):
     """Hồ sơ nghỉ thai sản của nhân viên (từ `ns_xuly_thaisan`).
 
@@ -161,9 +236,27 @@ class Employee(Base):
     last_name: Mapped[str] = mapped_column(String(50), nullable=False)  # tên
 
     id_number: Mapped[str | None] = mapped_column(String(20))  # CCCD/CMND (socmnd)
+    id_issue_date: Mapped[date | None] = mapped_column(Date)  # ngày cấp CMND (ngaycapcmnd)
+    id_issue_place_id: Mapped[int | None] = mapped_column(
+        ForeignKey("provinces.id"), nullable=True
+    )  # nơi cấp CMND (noicapcmnd)
     birth_date: Mapped[date | None] = mapped_column(Date)
     gender: Mapped[str | None] = mapped_column(String(10))
-    birth_place: Mapped[str | None] = mapped_column(String(100))  # nơi sinh
+    birth_place_id: Mapped[int | None] = mapped_column(
+        ForeignKey("provinces.id"), nullable=True
+    )  # nơi sinh (noisinh)
+    nationality_id: Mapped[int | None] = mapped_column(
+        ForeignKey("nationalities.id"), nullable=True
+    )  # quốc tịch (id_quoctich)
+    ethnicity_id: Mapped[int | None] = mapped_column(
+        ForeignKey("ethnicities.id"), nullable=True
+    )  # dân tộc (id_dantoc)
+    education_id: Mapped[int | None] = mapped_column(
+        ForeignKey("educations.id"), nullable=True
+    )  # học vấn (id_hocvan)
+    marital_status_id: Mapped[int | None] = mapped_column(
+        ForeignKey("marital_statuses.id"), nullable=True
+    )  # hôn nhân (id_honnhan)
     hometown: Mapped[str | None] = mapped_column(String(255))  # nguyên quán
     permanent_address: Mapped[str | None] = mapped_column(String(255))  # hộ khẩu
     current_address: Mapped[str | None] = mapped_column(String(255))  # chỗ ở hiện tại
@@ -181,6 +274,11 @@ class Employee(Base):
     join_date: Mapped[date | None] = mapped_column(Date)  # ngày vào làm
     probation_end_date: Mapped[date | None] = mapped_column(Date)  # hết thử việc
     salary_coefficient: Mapped[float | None] = mapped_column(Float)  # hệ số lương
+    contract_type_id: Mapped[int | None] = mapped_column(
+        ForeignKey("contract_types.id"), nullable=True
+    )  # loại HĐLĐ (id_hdld)
+    # Cờ BT/KT của hệ cũ (0/1): nhân viên có btkt=1 bị loại khỏi một số danh sách.
+    btkt: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     terminated_date: Mapped[date | None] = mapped_column(Date)  # ngày nghỉ việc
@@ -197,6 +295,13 @@ class Employee(Base):
     department: Mapped[Department | None] = relationship(back_populates="employees")
     position: Mapped[Position | None] = relationship(back_populates="employees")
     job_title: Mapped[JobTitle | None] = relationship(back_populates="employees")
+    birth_place: Mapped["Province | None"] = relationship(foreign_keys=[birth_place_id])
+    id_issue_place: Mapped["Province | None"] = relationship(foreign_keys=[id_issue_place_id])
+    nationality: Mapped["Nationality | None"] = relationship(back_populates="employees")
+    ethnicity: Mapped["Ethnicity | None"] = relationship(back_populates="employees")
+    education: Mapped["Education | None"] = relationship(back_populates="employees")
+    marital_status: Mapped["MaritalStatus | None"] = relationship(back_populates="employees")
+    contract_type: Mapped["ContractType | None"] = relationship(back_populates="employees")
 
     @property
     def full_name(self) -> str:

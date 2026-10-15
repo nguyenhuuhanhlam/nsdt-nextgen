@@ -4,21 +4,36 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_db
 from app.models.employee import (
+    ContractType,
     Department,
+    Education,
     Employee,
+    Ethnicity,
     JobTitle,
+    MaritalStatus,
     MaternityLeave,
     MaternityType,
+    Nationality,
     Position,
     Province,
 )
 from app.schemas.employee import (
+    ContractTypeCreate,
+    ContractTypeRead,
     DepartmentCreate,
     DepartmentRead,
+    EducationCreate,
+    EducationRead,
+    EthnicityCreate,
+    EthnicityRead,
     JobTitleCreate,
     JobTitleRead,
+    MaritalStatusCreate,
+    MaritalStatusRead,
     MaternityTypeCreate,
     MaternityTypeRead,
+    NationalityCreate,
+    NationalityRead,
     PositionCreate,
     PositionRead,
     ProvinceCreate,
@@ -211,3 +226,138 @@ def delete_maternity_type(item_id: int, db: Session = Depends(get_db)):
         "Loại thai sản",
         [(MaternityLeave, MaternityLeave.maternity_type_id, "hồ sơ thai sản")],
     )
+
+
+# --- Quốc tịch (ns_quoctich) ---
+@router.get("/nationalities", response_model=list[NationalityRead])
+def list_nationalities(db: Session = Depends(get_db)):
+    return db.scalars(select(Nationality).order_by(Nationality.name)).all()
+
+
+@router.post("/nationalities", response_model=NationalityRead, status_code=status.HTTP_201_CREATED)
+def create_nationality(payload: NationalityCreate, db: Session = Depends(get_db)):
+    if db.scalar(select(Nationality).where(Nationality.name == payload.name)):
+        raise HTTPException(status_code=409, detail="Quốc tịch đã tồn tại")
+    item = Nationality(**payload.model_dump())
+    db.add(item)
+    db.commit()
+    db.refresh(item)
+    return item
+
+
+@router.put("/nationalities/{item_id}", response_model=NationalityRead)
+def update_nationality(item_id: int, payload: NationalityCreate, db: Session = Depends(get_db)):
+    return _rename(db, Nationality, item_id, payload.name, "Quốc tịch")
+
+
+@router.delete("/nationalities/{item_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_nationality(item_id: int, db: Session = Depends(get_db)):
+    _delete(db, Nationality, item_id, "Quốc tịch", [(Employee, Employee.nationality_id, "nhân viên")])
+
+
+# --- Dân tộc (ns_dantoc) ---
+@router.get("/ethnicities", response_model=list[EthnicityRead])
+def list_ethnicities(db: Session = Depends(get_db)):
+    return db.scalars(select(Ethnicity).order_by(Ethnicity.name)).all()
+
+
+@router.post("/ethnicities", response_model=EthnicityRead, status_code=status.HTTP_201_CREATED)
+def create_ethnicity(payload: EthnicityCreate, db: Session = Depends(get_db)):
+    if db.scalar(select(Ethnicity).where(Ethnicity.name == payload.name)):
+        raise HTTPException(status_code=409, detail="Dân tộc đã tồn tại")
+    item = Ethnicity(**payload.model_dump())
+    db.add(item)
+    db.commit()
+    db.refresh(item)
+    return item
+
+
+@router.put("/ethnicities/{item_id}", response_model=EthnicityRead)
+def update_ethnicity(item_id: int, payload: EthnicityCreate, db: Session = Depends(get_db)):
+    return _rename(db, Ethnicity, item_id, payload.name, "Dân tộc")
+
+
+@router.delete("/ethnicities/{item_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_ethnicity(item_id: int, db: Session = Depends(get_db)):
+    _delete(db, Ethnicity, item_id, "Dân tộc", [(Employee, Employee.ethnicity_id, "nhân viên")])
+
+
+# --- Học vấn (ns_hocvan) ---
+@router.get("/educations", response_model=list[EducationRead])
+def list_educations(db: Session = Depends(get_db)):
+    return db.scalars(select(Education).order_by(Education.name)).all()
+
+
+@router.post("/educations", response_model=EducationRead, status_code=status.HTTP_201_CREATED)
+def create_education(payload: EducationCreate, db: Session = Depends(get_db)):
+    if db.scalar(select(Education).where(Education.name == payload.name)):
+        raise HTTPException(status_code=409, detail="Học vấn đã tồn tại")
+    item = Education(**payload.model_dump())
+    db.add(item)
+    db.commit()
+    db.refresh(item)
+    return item
+
+
+@router.put("/educations/{item_id}", response_model=EducationRead)
+def update_education(item_id: int, payload: EducationCreate, db: Session = Depends(get_db)):
+    return _rename(db, Education, item_id, payload.name, "Học vấn")
+
+
+@router.delete("/educations/{item_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_education(item_id: int, db: Session = Depends(get_db)):
+    _delete(db, Education, item_id, "Học vấn", [(Employee, Employee.education_id, "nhân viên")])
+
+
+# --- Hôn nhân (ns_honnhan) ---
+@router.get("/marital-statuses", response_model=list[MaritalStatusRead])
+def list_marital_statuses(db: Session = Depends(get_db)):
+    return db.scalars(select(MaritalStatus).order_by(MaritalStatus.name)).all()
+
+
+@router.post("/marital-statuses", response_model=MaritalStatusRead, status_code=status.HTTP_201_CREATED)
+def create_marital_status(payload: MaritalStatusCreate, db: Session = Depends(get_db)):
+    if db.scalar(select(MaritalStatus).where(MaritalStatus.name == payload.name)):
+        raise HTTPException(status_code=409, detail="Tình trạng hôn nhân đã tồn tại")
+    item = MaritalStatus(**payload.model_dump())
+    db.add(item)
+    db.commit()
+    db.refresh(item)
+    return item
+
+
+@router.put("/marital-statuses/{item_id}", response_model=MaritalStatusRead)
+def update_marital_status(item_id: int, payload: MaritalStatusCreate, db: Session = Depends(get_db)):
+    return _rename(db, MaritalStatus, item_id, payload.name, "Hôn nhân")
+
+
+@router.delete("/marital-statuses/{item_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_marital_status(item_id: int, db: Session = Depends(get_db)):
+    _delete(db, MaritalStatus, item_id, "Hôn nhân", [(Employee, Employee.marital_status_id, "nhân viên")])
+
+
+# --- Loại HĐLĐ (ns_hdld) ---
+@router.get("/contract-types", response_model=list[ContractTypeRead])
+def list_contract_types(db: Session = Depends(get_db)):
+    return db.scalars(select(ContractType).order_by(ContractType.name)).all()
+
+
+@router.post("/contract-types", response_model=ContractTypeRead, status_code=status.HTTP_201_CREATED)
+def create_contract_type(payload: ContractTypeCreate, db: Session = Depends(get_db)):
+    if db.scalar(select(ContractType).where(ContractType.name == payload.name)):
+        raise HTTPException(status_code=409, detail="Loại hợp đồng đã tồn tại")
+    item = ContractType(**payload.model_dump())
+    db.add(item)
+    db.commit()
+    db.refresh(item)
+    return item
+
+
+@router.put("/contract-types/{item_id}", response_model=ContractTypeRead)
+def update_contract_type(item_id: int, payload: ContractTypeCreate, db: Session = Depends(get_db)):
+    return _rename(db, ContractType, item_id, payload.name, "Loại HĐLĐ")
+
+
+@router.delete("/contract-types/{item_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_contract_type(item_id: int, db: Session = Depends(get_db)):
+    _delete(db, ContractType, item_id, "Loại HĐLĐ", [(Employee, Employee.contract_type_id, "nhân viên")])

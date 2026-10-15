@@ -16,11 +16,16 @@ import app.models  # noqa: F401 — đăng ký models với Base
 from app.db.base import Base
 from app.db.session import SessionLocal, engine
 from app.models.employee import (
+    ContractType,
     Department,
+    Education,
     Employee,
+    Ethnicity,
     JobTitle,
+    MaritalStatus,
     MaternityLeave,
     MaternityType,
+    Nationality,
     Position,
     Province,
 )
@@ -59,6 +64,11 @@ def main():
         job = _load_catalog(db, JobTitle, DATA["job_titles"])
         _load_catalog(db, Province, DATA["provinces"])
         mtype = _load_catalog(db, MaternityType, DATA["maternity_types"])
+        _load_catalog(db, Nationality, DATA["nationalities"])
+        _load_catalog(db, Ethnicity, DATA["ethnicities"])
+        _load_catalog(db, Education, DATA["educations"])
+        _load_catalog(db, MaritalStatus, DATA["marital_statuses"])
+        _load_catalog(db, ContractType, DATA["contract_types"])
 
         n_emp = 0
         code_to_id = {}

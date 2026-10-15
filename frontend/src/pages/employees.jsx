@@ -17,7 +17,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import DialogTitle from '../components/dialog-title.jsx';
 import { EditIcon, PlusIcon } from '../components/icons.jsx';
-import { employeesApi } from '../lib/api.js';
+import { catalogsApi, employeesApi } from '../lib/api.js';
 import { formatDate, parseDateInput } from '../lib/format.js';
 
 const PAGE_SIZE = 15;
@@ -38,17 +38,32 @@ function todayISO() {
 // Form lưu id danh mục (string, '' = chưa chọn); khi lưu mới đổi sang number/null.
 function buildPayload(form) {
   const toId = (v) => (v === '' ? null : Number(v));
+  const text = (v) => (v.trim() === '' ? null : v.trim());
   return {
     first_name: form.first_name.trim(),
     last_name: form.last_name.trim(),
     card_id: form.card_id.trim() === '' ? null : Number(form.card_id),
     gender: form.gender,
     birth_date: form.birth_date || null,
+    birth_place_id: toId(form.birth_place_id),
+    nationality_id: toId(form.nationality_id),
+    ethnicity_id: toId(form.ethnicity_id),
+    id_number: text(form.id_number),
+    id_issue_date: form.id_issue_date || null,
+    id_issue_place_id: toId(form.id_issue_place_id),
+    hometown: text(form.hometown),
+    permanent_address: text(form.permanent_address),
+    current_address: text(form.current_address),
+    education_id: toId(form.education_id),
+    marital_status_id: toId(form.marital_status_id),
     department_id: toId(form.department_id),
     position_id: toId(form.position_id),
     job_title_id: toId(form.job_title_id),
     join_date: form.join_date || null,
+    probation_end_date: form.probation_end_date || null,
     salary_coefficient: form.salary_coefficient === '' ? null : Number(form.salary_coefficient),
+    contract_type_id: toId(form.contract_type_id),
+    btkt: form.btkt,
     is_active: form.is_active,
     terminated_date: form.is_active ? null : form.terminated_date || null,
   };
@@ -69,10 +84,25 @@ function employeeMenuItems(emp, { onEdit }) {
   ];
 }
 
-function EmployeeDialog({ employee, departments, positions, jobTitles, onClose, onSave }) {
+// Dialog nhập/sửa nhân viên theo form cũ (nhansu.form.php / xuly_nhansu.form.php).
+// Tab "Thông tin chung" | "Lý lịch" | "Công việc" (+ "Nghỉ việc" khi sửa).
+// Khi sửa: khóa mã NV, mã thẻ, đơn vị, chức vụ, hệ số lương — đúng quy tắc form cũ.
+function EmployeeDialog({ employee, catalogs, onClose, onSave }) {
   const isEdit = Boolean(employee);
+  const {
+    departments = [],
+    positions = [],
+    jobTitles = [],
+    provinces = [],
+    nationalities = [],
+    ethnicities = [],
+    educations = [],
+    maritalStatuses = [],
+    contractTypes = [],
+  } = catalogs ?? {};
   // Tab đang mở. Sau này thêm tác vụ mới = thêm Tab + panel tương ứng ở đây.
   const [tab, setTab] = useState('info');
+  const id = (rel) => (rel?.id != null ? String(rel.id) : '');
   const [form, setForm] = useState(() => ({
     employee_code: employee?.employee_code ?? '',
     card_id: employee?.card_id != null ? String(employee.card_id) : '',
@@ -80,11 +110,25 @@ function EmployeeDialog({ employee, departments, positions, jobTitles, onClose, 
     last_name: employee?.last_name ?? '',
     gender: employee?.gender ?? 'Nam',
     birth_date: employee?.birth_date ?? '',
-    department_id: employee?.department?.id != null ? String(employee.department.id) : '',
-    position_id: employee?.position?.id != null ? String(employee.position.id) : '',
-    job_title_id: employee?.job_title?.id != null ? String(employee.job_title.id) : '',
+    birth_place_id: id(employee?.birth_place),
+    nationality_id: id(employee?.nationality),
+    ethnicity_id: id(employee?.ethnicity),
+    id_number: employee?.id_number ?? '',
+    id_issue_date: employee?.id_issue_date ?? '',
+    id_issue_place_id: id(employee?.id_issue_place),
+    hometown: employee?.hometown ?? '',
+    permanent_address: employee?.permanent_address ?? '',
+    current_address: employee?.current_address ?? '',
+    education_id: id(employee?.education),
+    marital_status_id: id(employee?.marital_status),
+    department_id: id(employee?.department),
+    position_id: id(employee?.position),
+    job_title_id: id(employee?.job_title),
     join_date: employee?.join_date ?? '',
-    salary_coefficient: employee?.salary_coefficient != null ? String(employee.salary_coefficient) : '1.00',
+    probation_end_date: employee?.probation_end_date ?? '',
+    salary_coefficient: employee?.salary_coefficient != null ? String(employee.salary_coefficient) : '1.124',
+    contract_type_id: id(employee?.contract_type),
+    btkt: employee?.btkt ?? false,
     is_active: employee?.is_active ?? true,
     terminated_date: employee?.terminated_date ?? '',
   }));
@@ -112,14 +156,26 @@ function EmployeeDialog({ employee, departments, positions, jobTitles, onClose, 
   };
 
   const catalogOptions = (list) => list.map((c) => ({ value: String(c.id), label: c.name }));
+  const dateInput = (key, label, extraProps) => (
+    <TextInput
+      label={label}
+      value={formatDate(form[key])}
+      onChange={(v) => set(key)(parseDateInput(v))}
+      placeholder="dd-mm-yyyy"
+      width="100%"
+      {...extraProps}
+    />
+  );
 
   return (
-    <Dialog isOpen onOpenChange={(open) => !open && onClose()} width={600} maxHeight="85dvh">
+    <Dialog isOpen onOpenChange={(open) => !open && onClose()} width={640} maxHeight="85dvh">
       <DialogTitle onClose={onClose}>
         {isEdit ? 'Sửa thông tin nhân viên' : 'Thêm nhân viên'}
       </DialogTitle>
       <TabList value={tab} onChange={setTab} hasDivider>
         <Tab value="info" label="Thông tin chung" />
+        <Tab value="profile" label="Lý lịch" />
+        <Tab value="job" label="Công việc" />
         {isEdit && <Tab value="leave" label="Nghỉ việc" />}
         {/* TODO: thêm tab tác vụ tương lai ở đây */}
       </TabList>
@@ -135,18 +191,59 @@ function EmployeeDialog({ employee, departments, positions, jobTitles, onClose, 
               <TextInput label="Tên" value={form.last_name} onChange={set('last_name')} isRequired width="100%" />
             </HStack>
             <HStack gap={3}>
-              <TextInput label="Ngày sinh" value={formatDate(form.birth_date)} onChange={(v) => set('birth_date')(parseDateInput(v))} placeholder="dd-mm-yyyy" width="100%" />
-              <TextInput label="Ngày vào làm" value={formatDate(form.join_date)} onChange={(v) => set('join_date')(parseDateInput(v))} placeholder="dd-mm-yyyy" width="100%" />
+              {dateInput('birth_date', 'Ngày sinh')}
+              <Selector label="Nơi sinh" value={form.birth_place_id} onChange={set('birth_place_id')} options={catalogOptions(provinces)} hasSearch hasClear width="100%" />
             </HStack>
             <HStack gap={3}>
-              <Selector label="Đơn vị" value={form.department_id} onChange={set('department_id')} options={catalogOptions(departments)} hasSearch hasClear width="100%" />
-              <Selector label="Chức vụ" value={form.position_id} onChange={set('position_id')} options={catalogOptions(positions)} hasSearch hasClear width="100%" />
+              <Selector label="Quốc tịch" value={form.nationality_id} onChange={set('nationality_id')} options={catalogOptions(nationalities)} hasSearch hasClear width="100%" />
+              <Selector label="Dân tộc" value={form.ethnicity_id} onChange={set('ethnicity_id')} options={catalogOptions(ethnicities)} hasSearch hasClear width="100%" />
+            </HStack>
+            <TextInput label="Mã thẻ (thẻ từ)" value={form.card_id} onChange={set('card_id')} placeholder="Số thẻ chấm công" isDisabled={isEdit} width="100%" />
+          </>
+        )}
+        {tab === 'profile' && (
+          <>
+            <HStack gap={3}>
+              <TextInput label="Số CMND/CCCD" value={form.id_number} onChange={set('id_number')} width="100%" />
+              {dateInput('id_issue_date', 'Ngày cấp')}
             </HStack>
             <HStack gap={3}>
-              <TextInput label="Mã thẻ (thẻ từ)" value={form.card_id} onChange={set('card_id')} placeholder="Số thẻ chấm công" width="100%" />
+              <Selector label="Nơi cấp" value={form.id_issue_place_id} onChange={set('id_issue_place_id')} options={catalogOptions(provinces)} hasSearch hasClear width="100%" />
+              <TextInput label="Nguyên quán" value={form.hometown} onChange={set('hometown')} width="100%" />
+            </HStack>
+            <TextInput label="Địa chỉ thường trú" value={form.permanent_address} onChange={set('permanent_address')} width="100%" />
+            <TextInput label="Địa chỉ cư ngụ" value={form.current_address} onChange={set('current_address')} width="100%" />
+            <HStack gap={3}>
+              <Selector label="Học vấn" value={form.education_id} onChange={set('education_id')} options={catalogOptions(educations)} hasSearch hasClear width="100%" />
+              <Selector label="Hôn nhân" value={form.marital_status_id} onChange={set('marital_status_id')} options={catalogOptions(maritalStatuses)} hasSearch hasClear width="100%" />
+            </HStack>
+          </>
+        )}
+        {tab === 'job' && (
+          <>
+            <HStack gap={3}>
+              {dateInput('join_date', 'Ngày vào làm')}
+              {dateInput('probation_end_date', 'Ngày hết thử việc')}
+            </HStack>
+            <HStack gap={3}>
+              <Selector label="Đơn vị" value={form.department_id} onChange={set('department_id')} options={catalogOptions(departments)} hasSearch hasClear isDisabled={isEdit} width="100%" />
+              <Selector label="Chức vụ" value={form.position_id} onChange={set('position_id')} options={catalogOptions(positions)} hasSearch hasClear isDisabled={isEdit} width="100%" />
+            </HStack>
+            <HStack gap={3}>
               <Selector label="Công việc" value={form.job_title_id} onChange={set('job_title_id')} options={catalogOptions(jobTitles)} hasSearch hasClear width="100%" />
+              <TextInput label="Hệ số lương" value={form.salary_coefficient} onChange={set('salary_coefficient')} isDisabled={isEdit} width="100%" />
             </HStack>
-            <TextInput label="Hệ số lương" value={form.salary_coefficient} onChange={set('salary_coefficient')} width={160} />
+            <HStack gap={3}>
+              <Selector label="Loại HĐLĐ" value={form.contract_type_id} onChange={set('contract_type_id')} options={catalogOptions(contractTypes)} hasSearch hasClear width="100%" />
+              <VStack width="100%" justify="end">
+                <Switch
+                  label="BT/KT"
+                  value={form.btkt}
+                  onChange={set('btkt')}
+                  description="Cờ BT/KT của hệ cũ (bật = loại khỏi một số danh sách)."
+                />
+              </VStack>
+            </HStack>
           </>
         )}
         {tab === 'leave' && isEdit && (
@@ -192,9 +289,7 @@ export default function Employees() {
   const [page, setPage] = useState(1);
   const [q, setQ] = useState('');
   const [deptId, setDeptId] = useState('');
-  const [departments, setDepartments] = useState([]);
-  const [positions, setPositions] = useState([]);
-  const [jobTitles, setJobTitles] = useState([]);
+  const [catalogs, setCatalogs] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [dialog, setDialog] = useState(null); // null | {mode:'add'} | {mode:'edit', employee}
@@ -208,15 +303,29 @@ export default function Employees() {
     let cancelled = false;
     (async () => {
       try {
-        const [d, p, j] = await Promise.all([
+        const [d, p, j, prov, nat, eth, edu, mar, ct] = await Promise.all([
           employeesApi.listDepartments(),
           employeesApi.listPositions(),
           employeesApi.listJobTitles(),
+          catalogsApi.provinces.list(),
+          catalogsApi.nationalities.list(),
+          catalogsApi.ethnicities.list(),
+          catalogsApi.educations.list(),
+          catalogsApi['marital-statuses'].list(),
+          catalogsApi['contract-types'].list(),
         ]);
         if (!cancelled) {
-          setDepartments(d);
-          setPositions(p);
-          setJobTitles(j);
+          setCatalogs({
+            departments: d,
+            positions: p,
+            jobTitles: j,
+            provinces: prov,
+            nationalities: nat,
+            ethnicities: eth,
+            educations: edu,
+            maritalStatuses: mar,
+            contractTypes: ct,
+          });
         }
       } catch (e) {
         if (!cancelled) setError(e.message);
@@ -372,7 +481,7 @@ export default function Employees() {
           placeholder="Tất cả đơn vị"
           value={deptId}
           onChange={(v) => { setDeptId(v ?? ''); setPage(1); }}
-          options={departments.map((d) => ({ value: String(d.id), label: d.name }))}
+          options={(catalogs?.departments ?? []).map((d) => ({ value: String(d.id), label: d.name }))}
           hasSearch
           hasClear
           width={240}
@@ -423,9 +532,7 @@ export default function Employees() {
       {dialog && (
         <EmployeeDialog
           employee={dialog.mode === 'edit' ? dialog.employee : null}
-          departments={departments}
-          positions={positions}
-          jobTitles={jobTitles}
+          catalogs={catalogs}
           onClose={closeDialog}
           onSave={saveEmployee}
         />

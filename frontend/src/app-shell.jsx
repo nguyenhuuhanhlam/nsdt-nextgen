@@ -35,6 +35,11 @@ const NAV = [
       { label: 'Chức vụ', href: '#/catalogs/positions' },
       { label: 'Công việc', href: '#/catalogs/job-titles' },
       { label: 'Tỉnh thành', href: '#/catalogs/provinces' },
+      { label: 'Quốc tịch', href: '#/catalogs/nationalities' },
+      { label: 'Dân tộc', href: '#/catalogs/ethnicities' },
+      { label: 'Học vấn', href: '#/catalogs/educations' },
+      { label: 'Hôn nhân', href: '#/catalogs/marital-statuses' },
+      { label: 'Loại HĐLĐ', href: '#/catalogs/contract-types' },
     ],
   },
   {
@@ -55,6 +60,11 @@ const PALETTE_COMMANDS = [
   { id: 'positions', label: 'Chức vụ', auxiliaryData: { path: '/catalogs/positions', keywords: ['chuc vu', 'danh muc'] } },
   { id: 'job-titles', label: 'Công việc', auxiliaryData: { path: '/catalogs/job-titles', keywords: ['cong viec', 'danh muc'] } },
   { id: 'provinces', label: 'Tỉnh thành', auxiliaryData: { path: '/catalogs/provinces', keywords: ['tinh thanh', 'danh muc'] } },
+  { id: 'nationalities', label: 'Quốc tịch', auxiliaryData: { path: '/catalogs/nationalities', keywords: ['quoc tich', 'danh muc'] } },
+  { id: 'ethnicities', label: 'Dân tộc', auxiliaryData: { path: '/catalogs/ethnicities', keywords: ['dan toc', 'danh muc'] } },
+  { id: 'educations', label: 'Học vấn', auxiliaryData: { path: '/catalogs/educations', keywords: ['hoc van', 'danh muc'] } },
+  { id: 'marital-statuses', label: 'Hôn nhân', auxiliaryData: { path: '/catalogs/marital-statuses', keywords: ['hon nhan', 'danh muc'] } },
+  { id: 'contract-types', label: 'Loại HĐLĐ', auxiliaryData: { path: '/catalogs/contract-types', keywords: ['hop dong', 'hdld', 'danh muc'] } },
   { id: 'maternity', label: 'Quản lý thai sản', auxiliaryData: { path: '/maternity', keywords: ['thai san', 'nghi sinh', 'nhan su'] } },
 ];
 

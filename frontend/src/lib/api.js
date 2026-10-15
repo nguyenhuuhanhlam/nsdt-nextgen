@@ -56,6 +56,11 @@ export const catalogsApi = {
   'job-titles': catalogCrud('job-titles'),
   provinces: catalogCrud('provinces'),
   'maternity-types': catalogCrud('maternity-types'),
+  nationalities: catalogCrud('nationalities'),
+  ethnicities: catalogCrud('ethnicities'),
+  educations: catalogCrud('educations'),
+  'marital-statuses': catalogCrud('marital-statuses'),
+  'contract-types': catalogCrud('contract-types'),
 };
 
 export const maternityApi = {

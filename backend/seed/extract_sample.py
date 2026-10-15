@@ -40,6 +40,11 @@ catalogs = {
     'job_titles': rows("SELECT id_congviec AS old_id, congviec AS name FROM ns_congviec ORDER BY id_congviec"),
     'provinces': rows("SELECT id_tinhthanh AS old_id, tinhthanh AS name FROM ns_tinhthanh ORDER BY id_tinhthanh"),
     'maternity_types': rows("SELECT id_thaisan AS old_id, thaisan AS name FROM ns_thaisan ORDER BY id_thaisan"),
+    'nationalities': rows("SELECT id_quoctich AS old_id, quoctich AS name FROM ns_quoctich ORDER BY id_quoctich"),
+    'ethnicities': rows("SELECT id_dantoc AS old_id, dantoc AS name FROM ns_dantoc ORDER BY id_dantoc"),
+    'educations': rows("SELECT id_hocvan AS old_id, hocvan AS name FROM ns_hocvan ORDER BY id_hocvan"),
+    'marital_statuses': rows("SELECT id_honnhan AS old_id, honnhan AS name FROM ns_honnhan ORDER BY id_honnhan"),
+    'contract_types': rows("SELECT id_hdld AS old_id, loaihopdong AS name FROM ns_hdld ORDER BY id_hdld"),
 }
 
 emps = rows("""(SELECT ma_nhanvien, ma_the, gioitinh, ngaysinh, id_donvi, id_chucvu, id_congviec,
