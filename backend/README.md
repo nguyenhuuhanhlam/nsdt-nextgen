@@ -34,3 +34,16 @@ python -c "from app.db.base import Base; from app.db.session import engine; impo
 ```
 
 (về sau sẽ dùng Alembic migration khi schema ổn định)
+
+## Nạp dữ liệu mẫu (seed)
+
+`seed/sample_data.json` chứa ~300 hồ sơ nhân viên + danh mục liên quan trích từ
+hệ cũ, **đã ẩn danh hóa** (tên là dữ liệu giả theo phân bố thực tế, không gồm
+CMND/địa chỉ) — an toàn để commit. Nạp vào DB phát triển:
+
+```bash
+cd backend && python -m seed.load_sample
+```
+
+Chạy lại nhiều lần vẫn an toàn (bản ghi đã tồn tại sẽ được bỏ qua).
+Muốn trích xuất lại từ server cũ: xem `seed/extract_sample.py` (chỉ đọc).
