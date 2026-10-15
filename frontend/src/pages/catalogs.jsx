@@ -24,6 +24,7 @@ const CATALOGS = {
   positions: { title: 'Chức vụ', itemLabel: 'chức vụ' },
   'job-titles': { title: 'Công việc', itemLabel: 'công việc' },
   provinces: { title: 'Tỉnh thành', itemLabel: 'tỉnh thành' },
+  'maternity-types': { title: 'Loại thai sản', itemLabel: 'loại thai sản' },
 };
 
 function catalogMenuItems(cfg, item, onEdit, onDelete) {

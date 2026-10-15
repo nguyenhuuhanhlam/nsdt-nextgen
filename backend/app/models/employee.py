@@ -89,6 +89,56 @@ class Province(Base):
     )
 
 
+class MaternityType(Base):
+    """Loại thai sản (từ `ns_thaisan`). Danh mục độc lập."""
+
+    __tablename__ = "maternity_types"
+    __table_args__ = MYSQL_TABLE_ARGS
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    name: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.now(), nullable=False
+    )
+
+
+class MaternityLeave(Base):
+    """Hồ sơ nghỉ thai sản của nhân viên (từ `ns_xuly_thaisan`).
+
+    leave_days (số ngày nghỉ) được tự tính từ khoảng ngày khi tạo/sửa nếu
+    không truyền vào, nhưng vẫn cho phép ghi đè thủ công theo chính sách.
+    """
+
+    __tablename__ = "maternity_leaves"
+    __table_args__ = (
+        Index("ix_maternity_leaves_employee", "employee_id"),
+        Index("ix_maternity_leaves_type", "maternity_type_id"),
+        MYSQL_TABLE_ARGS,
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    employee_id: Mapped[int] = mapped_column(
+        ForeignKey("employees.id"), nullable=False
+    )
+    maternity_type_id: Mapped[int] = mapped_column(
+        ForeignKey("maternity_types.id"), nullable=False
+    )
+    start_date: Mapped[date] = mapped_column(Date, nullable=False)  # ngay_batdau
+    end_date: Mapped[date] = mapped_column(Date, nullable=False)  # ngay_ketthuc
+    leave_days: Mapped[int] = mapped_column(Integer, nullable=False, default=0)  # songaynghi
+    notes: Mapped[str | None] = mapped_column(Text)
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+
+    employee: Mapped["Employee"] = relationship()
+    maternity_type: Mapped["MaternityType"] = relationship()
+
+
 class Employee(Base):
     """Hồ sơ nhân viên (từ `ns_nhansu`)."""
 

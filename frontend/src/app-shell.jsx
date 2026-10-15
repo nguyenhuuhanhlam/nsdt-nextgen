@@ -23,7 +23,10 @@ const NAV = [
   },
   {
     section: 'Nhân sự',
-    items: [{ label: 'Quản lý nhân viên', href: '#/employees' }],
+    items: [
+      { label: 'Quản lý nhân viên', href: '#/employees' },
+      { label: 'Quản lý thai sản', href: '#/maternity' },
+    ],
   },
   {
     section: 'Danh mục',
@@ -52,6 +55,7 @@ const PALETTE_COMMANDS = [
   { id: 'positions', label: 'Chức vụ', auxiliaryData: { path: '/catalogs/positions', keywords: ['chuc vu', 'danh muc'] } },
   { id: 'job-titles', label: 'Công việc', auxiliaryData: { path: '/catalogs/job-titles', keywords: ['cong viec', 'danh muc'] } },
   { id: 'provinces', label: 'Tỉnh thành', auxiliaryData: { path: '/catalogs/provinces', keywords: ['tinh thanh', 'danh muc'] } },
+  { id: 'maternity', label: 'Quản lý thai sản', auxiliaryData: { path: '/maternity', keywords: ['thai san', 'nghi sinh', 'nhan su'] } },
 ];
 
 function TopBar({ onOpenPalette }) {

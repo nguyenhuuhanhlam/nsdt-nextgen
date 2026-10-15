@@ -63,6 +63,72 @@ class ProvinceRead(ProvinceBase):
     created_at: datetime
 
 
+class MaternityTypeBase(BaseModel):
+    name: str = Field(max_length=100)
+
+
+class MaternityTypeCreate(MaternityTypeBase):
+    pass
+
+
+class MaternityTypeRead(MaternityTypeBase):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    created_at: datetime
+
+
+class EmployeeBrief(BaseModel):
+    """Thông tin gọn của nhân viên để nhúng trong các bản ghi liên quan."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    employee_code: str
+    full_name: str
+
+
+class MaternityLeaveBase(BaseModel):
+    employee_id: int
+    maternity_type_id: int
+    start_date: date
+    end_date: date
+    leave_days: int | None = Field(default=None, ge=0)
+    notes: str | None = None
+
+
+class MaternityLeaveCreate(MaternityLeaveBase):
+    pass
+
+
+class MaternityLeaveUpdate(BaseModel):
+    """Tất cả field optional — PATCH từng phần."""
+
+    maternity_type_id: int | None = None
+    start_date: date | None = None
+    end_date: date | None = None
+    leave_days: int | None = Field(default=None, ge=0)
+    notes: str | None = None
+
+
+class MaternityLeaveRead(MaternityLeaveBase):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    leave_days: int
+    employee: EmployeeBrief
+    maternity_type: MaternityTypeRead
+    created_at: datetime
+    updated_at: datetime
+
+
+class PaginatedMaternityLeaves(BaseModel):
+    items: list[MaternityLeaveRead]
+    total: int
+    page: int
+    page_size: int
+
+
 class EmployeeBase(BaseModel):
     employee_code: str = Field(max_length=16)
     card_id: int | None = None

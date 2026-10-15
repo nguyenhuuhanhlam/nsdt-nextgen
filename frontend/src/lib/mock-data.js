@@ -57,6 +57,13 @@ const TINH_THANH = [
   'Bình Dương', 'Đồng Nai', 'Long An', 'Tây Ninh', 'Bà Rịa - Vũng Tàu',
 ];
 
+const THAI_SAN = [
+  'Nghỉ thai sản',
+  'Khám thai',
+  'Nghỉ dưỡng sức sau sinh',
+  'Sảy thai / thai lưu',
+];
+
 /** Danh mục dạng [{id, name}] theo key dùng trong route /catalogs/:kind. */
 export function makeMockCatalogs() {
   const asItems = (arr) => arr.map((name, i) => ({ id: i + 1, name }));
@@ -65,5 +72,30 @@ export function makeMockCatalogs() {
     positions: asItems(CHUC_VU),
     'job-titles': asItems(CONG_VIEC),
     provinces: asItems(TINH_THANH),
+    'maternity-types': asItems(THAI_SAN),
   };
+}
+
+export function makeMockMaternityLeaves(employees, count = 14) {
+  const rand = seededRandom(7);
+  const types = THAI_SAN.map((name, i) => ({ id: i + 1, name }));
+  const pick = (arr) => arr[Math.floor(rand() * arr.length)];
+  return Array.from({ length: count }, (_, i) => {
+    const emp = pick(employees);
+    const startMonth = 1 + Math.floor(rand() * 9);
+    const startDay = 1 + Math.floor(rand() * 27);
+    const start = `2026-${String(startMonth).padStart(2, '0')}-${String(startDay).padStart(2, '0')}`;
+    const len = 5 + Math.floor(rand() * 175); // 5..179 ngày
+    const endDate = new Date(2026, startMonth - 1, startDay + len);
+    const end = endDate.toISOString().slice(0, 10);
+    return {
+      id: i + 1,
+      employee: { id: emp.id, employee_code: emp.employee_code, full_name: emp.full_name },
+      maternity_type: pick(types),
+      start_date: start,
+      end_date: end,
+      leave_days: len + 1,
+      notes: '',
+    };
+  });
 }

@@ -3,12 +3,22 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_db
-from app.models.employee import Department, Employee, JobTitle, Position, Province
+from app.models.employee import (
+    Department,
+    Employee,
+    JobTitle,
+    MaternityLeave,
+    MaternityType,
+    Position,
+    Province,
+)
 from app.schemas.employee import (
     DepartmentCreate,
     DepartmentRead,
     JobTitleCreate,
     JobTitleRead,
+    MaternityTypeCreate,
+    MaternityTypeRead,
     PositionCreate,
     PositionRead,
     ProvinceCreate,
@@ -90,16 +100,21 @@ def _rename(db: Session, model, item_id: int, name: str, label: str):
     return item
 
 
-def _delete(db: Session, model, item_id: int, label: str, fk_column=None):
+def _delete(db: Session, model, item_id: int, label: str, references: list | None = None):
+    """Xóa một mục danh mục.
+
+    references: [(Model tham chiếu, cột FK, mô tả tiếng Việt), ...] —
+    nếu còn bản ghi tham chiếu tới thì chặn với 409.
+    """
     item = _get_or_404(db, model, item_id, label)
-    if fk_column is not None:
+    for ref_model, ref_column, ref_label in references or []:
         in_use = db.scalar(
-            select(func.count()).select_from(Employee).where(fk_column == item_id)
+            select(func.count()).select_from(ref_model).where(ref_column == item_id)
         )
         if in_use:
             raise HTTPException(
                 status_code=409,
-                detail=f"{label} đang được dùng bởi {in_use} nhân viên, không thể xóa",
+                detail=f"{label} đang được dùng bởi {in_use} {ref_label}, không thể xóa",
             )
     db.delete(item)
     db.commit()
@@ -113,7 +128,7 @@ def update_department(item_id: int, payload: DepartmentCreate, db: Session = Dep
 
 @router.delete("/departments/{item_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_department(item_id: int, db: Session = Depends(get_db)):
-    _delete(db, Department, item_id, "Đơn vị", Employee.department_id)
+    _delete(db, Department, item_id, "Đơn vị", [(Employee, Employee.department_id, "nhân viên")])
 
 
 # --- Chức vụ ---
@@ -124,7 +139,7 @@ def update_position(item_id: int, payload: PositionCreate, db: Session = Depends
 
 @router.delete("/positions/{item_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_position(item_id: int, db: Session = Depends(get_db)):
-    _delete(db, Position, item_id, "Chức vụ", Employee.position_id)
+    _delete(db, Position, item_id, "Chức vụ", [(Employee, Employee.position_id, "nhân viên")])
 
 
 # --- Công việc ---
@@ -135,7 +150,7 @@ def update_job_title(item_id: int, payload: JobTitleCreate, db: Session = Depend
 
 @router.delete("/job-titles/{item_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_job_title(item_id: int, db: Session = Depends(get_db)):
-    _delete(db, JobTitle, item_id, "Công việc", Employee.job_title_id)
+    _delete(db, JobTitle, item_id, "Công việc", [(Employee, Employee.job_title_id, "nhân viên")])
 
 
 # --- Tỉnh thành ---
@@ -163,3 +178,36 @@ def update_province(item_id: int, payload: ProvinceCreate, db: Session = Depends
 @router.delete("/provinces/{item_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_province(item_id: int, db: Session = Depends(get_db)):
     _delete(db, Province, item_id, "Tỉnh thành")
+
+
+# --- Loại thai sản ---
+@router.get("/maternity-types", response_model=list[MaternityTypeRead])
+def list_maternity_types(db: Session = Depends(get_db)):
+    return db.scalars(select(MaternityType).order_by(MaternityType.name)).all()
+
+
+@router.post("/maternity-types", response_model=MaternityTypeRead, status_code=status.HTTP_201_CREATED)
+def create_maternity_type(payload: MaternityTypeCreate, db: Session = Depends(get_db)):
+    if db.scalar(select(MaternityType).where(MaternityType.name == payload.name)):
+        raise HTTPException(status_code=409, detail="Loại thai sản đã tồn tại")
+    mt = MaternityType(**payload.model_dump())
+    db.add(mt)
+    db.commit()
+    db.refresh(mt)
+    return mt
+
+
+@router.put("/maternity-types/{item_id}", response_model=MaternityTypeRead)
+def update_maternity_type(item_id: int, payload: MaternityTypeCreate, db: Session = Depends(get_db)):
+    return _rename(db, MaternityType, item_id, payload.name, "Loại thai sản")
+
+
+@router.delete("/maternity-types/{item_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_maternity_type(item_id: int, db: Session = Depends(get_db)):
+    _delete(
+        db,
+        MaternityType,
+        item_id,
+        "Loại thai sản",
+        [(MaternityLeave, MaternityLeave.maternity_type_id, "hồ sơ thai sản")],
+    )
