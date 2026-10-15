@@ -1,6 +1,5 @@
 // Quản lý các bảng danh mục: đơn vị, chức vụ, công việc, tỉnh thành, loại thai sản.
 // Một component dùng chung, cấu hình theo từng loại qua CATALOGS. Dữ liệu qua API.
-import { AlertDialog } from '@astryxdesign/core/AlertDialog';
 import { Button } from '@astryxdesign/core/Button';
 import { ContextMenu } from '@astryxdesign/core/ContextMenu';
 import { Dialog } from '@astryxdesign/core/Dialog';
@@ -50,6 +49,8 @@ function CatalogManager({ kind }) {
   const [dialog, setDialog] = useState(null); // null | { mode: 'add' } | { mode: 'edit', item }
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleteError, setDeleteError] = useState('');
+  const [confirmName, setConfirmName] = useState('');
+  const [deleting, setDeleting] = useState(false);
   const [name, setName] = useState('');
   const [nameError, setNameError] = useState('');
   const [saving, setSaving] = useState(false);
@@ -144,14 +145,30 @@ function CatalogManager({ kind }) {
 
   const confirmDelete = async () => {
     setDeleteError('');
+    setDeleting(true);
     try {
       await api.remove(deleteTarget.id);
-      setDeleteTarget(null);
+      closeDelete();
       await reload();
     } catch (e) {
       // 409 khi mục đang được nhân viên dùng — giữ dialog mở để hiện lý do.
       setDeleteError(e.message);
+    } finally {
+      setDeleting(false);
     }
+  };
+
+  // Mở dialog xóa: xóa danh mục rất nguy hiểm nên bắt buộc gõ lại tên để xác nhận.
+  const askDelete = (item) => {
+    setDeleteError('');
+    setConfirmName('');
+    setDeleteTarget(item);
+  };
+
+  const closeDelete = () => {
+    setDeleteTarget(null);
+    setDeleteError('');
+    setConfirmName('');
   };
 
   const columns = useMemo(
@@ -166,7 +183,7 @@ function CatalogManager({ kind }) {
         renderCell: (row) => (
           <DropdownMenu
             label={`Tác vụ của ${row.name}`}
-            items={catalogMenuItems(cfg, row, openEdit, (it) => { setDeleteError(''); setDeleteTarget(it); })}
+            items={catalogMenuItems(cfg, row, openEdit, askDelete)}
             renderTrigger={(props) => (
               <IconButton
                 icon={<EditIcon />}
@@ -221,7 +238,7 @@ function CatalogManager({ kind }) {
         <VStack ref={tableWrapRef} gap={3} paddingBlockStart={4}>
           <ContextMenu
             label="Tác vụ danh mục"
-            items={ctxItem ? catalogMenuItems(cfg, ctxItem, openEdit, (it) => { setDeleteError(''); setDeleteTarget(it); }) : []}
+            items={ctxItem ? catalogMenuItems(cfg, ctxItem, openEdit, askDelete) : []}
           >
             <Table
               data={filtered}
@@ -271,21 +288,48 @@ function CatalogManager({ kind }) {
         </HStack>
       </Dialog>
 
-      <AlertDialog
+      {/* Xóa danh mục rất nguy hiểm: bắt buộc gõ lại đúng tên mục mới cho xóa. */}
+      <Dialog
         isOpen={deleteTarget != null}
         onOpenChange={(open) => {
-          if (!open) {
-            setDeleteTarget(null);
-            setDeleteError('');
-          }
+          if (!open) closeDelete();
         }}
-        title={`Xóa ${cfg.itemLabel}`}
-        description={deleteError || `Bạn có chắc muốn xóa "${deleteTarget?.name}"? Thao tác này không thể hoàn tác.`}
-        cancelLabel="Hủy"
-        actionLabel="Xóa"
-        actionVariant="destructive"
-        onAction={confirmDelete}
-      />
+        width={480}
+      >
+        <DialogTitle onClose={closeDelete}>Xóa {cfg.itemLabel}</DialogTitle>
+        <VStack gap={3} padding={4}>
+          <Text>
+            Hành động này sẽ xóa vĩnh viễn &ldquo;{deleteTarget?.name}&rdquo; và không thể hoàn tác.
+            Để xác nhận, hãy gõ lại đúng tên {cfg.itemLabel} vào ô bên dưới.
+          </Text>
+          <TextInput
+            label={`Gõ lại tên ${cfg.itemLabel}`}
+            value={confirmName}
+            onChange={(v) => {
+              setConfirmName(v);
+              if (deleteError) setDeleteError('');
+            }}
+            placeholder={deleteTarget?.name}
+            description={deleteError || undefined}
+            status={deleteError ? 'error' : undefined}
+            hasAutoFocus
+            width="100%"
+          />
+        </VStack>
+        <HStack gap={2} justify="end" padding={4}>
+          <Button variant="ghost" label="Hủy" onClick={closeDelete} isDisabled={deleting}>
+            Hủy
+          </Button>
+          <Button
+            variant="destructive"
+            label="Xóa"
+            onClick={confirmDelete}
+            isDisabled={deleting || confirmName.trim() !== deleteTarget?.name}
+          >
+            Xóa
+          </Button>
+        </HStack>
+      </Dialog>
     </VStack>
   );
 }
