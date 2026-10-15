@@ -1,4 +1,5 @@
 // Quản lý hồ sơ nghỉ thai sản của nhân viên (theo ns_xuly_thaisan của hệ cũ).
+// Dữ liệu qua API.
 import { AlertDialog } from '@astryxdesign/core/AlertDialog';
 import { Button } from '@astryxdesign/core/Button';
 import { ContextMenu } from '@astryxdesign/core/ContextMenu';
@@ -12,12 +13,23 @@ import { Table, pixel, proportional } from '@astryxdesign/core/Table';
 import { Text } from '@astryxdesign/core/Text';
 import { TextInput } from '@astryxdesign/core/TextInput';
 import { VStack } from '@astryxdesign/core/VStack';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import DialogTitle from '../components/dialog-title.jsx';
 import { EditIcon, PlusIcon, TrashIcon } from '../components/icons.jsx';
+import { employeesApi, maternityApi } from '../lib/api.js';
 import { formatDate, parseDateInput } from '../lib/format.js';
-import { makeMockCatalogs, makeMockEmployees, makeMockMaternityLeaves } from '../lib/mock-data.js';
+
+const PAGE_SIZE = 15;
+
+function useDebouncedValue(value, delay) {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const t = setTimeout(() => setDebounced(value), delay);
+    return () => clearTimeout(t);
+  }, [value, delay]);
+  return debounced;
+}
 
 /** Số ngày nghỉ tính bao gồm cả 2 đầu; null khi ngày không hợp lệ. */
 function calcDays(startISO, endISO) {
@@ -45,7 +57,7 @@ function LeaveDialog({ leave, employees, types, onClose, onSave }) {
   const isEdit = Boolean(leave);
   const [form, setForm] = useState(() => ({
     employee_id: leave ? String(leave.employee.id) : '',
-    type_name: leave?.maternity_type.name ?? types[0]?.name ?? '',
+    type_id: leave ? String(leave.maternity_type.id) : types[0] ? String(types[0].id) : '',
     start_date: leave?.start_date ?? '',
     end_date: leave?.end_date ?? '',
     leave_days: leave ? String(leave.leave_days) : '',
@@ -53,6 +65,7 @@ function LeaveDialog({ leave, employees, types, onClose, onSave }) {
   }));
   // Người dùng đã tự sửa số ngày nghỉ → không tự tính đè nữa.
   const [daysTouched, setDaysTouched] = useState(isEdit);
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
   const set = (k) => (v) =>
@@ -74,22 +87,28 @@ function LeaveDialog({ leave, employees, types, onClose, onSave }) {
     [employees],
   );
 
-  const save = () => {
+  const save = async () => {
     if (!form.employee_id) return setError('Hãy chọn nhân viên.');
-    if (!form.type_name) return setError('Hãy chọn loại thai sản.');
+    if (!form.type_id) return setError('Hãy chọn loại thai sản.');
     const days = calcDays(form.start_date, form.end_date);
     if (days == null)
       return setError('Ngày bắt đầu/kết thúc không hợp lệ (ngày kết thúc phải từ ngày bắt đầu trở đi).');
-    const emp = employees.find((e) => String(e.id) === form.employee_id);
-    const type = types.find((t) => t.name === form.type_name);
-    onSave({
-      employee: { id: emp.id, employee_code: emp.employee_code, full_name: emp.full_name },
-      maternity_type: { id: type.id, name: type.name },
-      start_date: form.start_date,
-      end_date: form.end_date,
-      leave_days: form.leave_days.trim() === '' ? days : Number(form.leave_days),
-      notes: form.notes.trim(),
-    });
+    setSaving(true);
+    setError('');
+    try {
+      await onSave({
+        employee_id: Number(form.employee_id),
+        maternity_type_id: Number(form.type_id),
+        start_date: form.start_date,
+        end_date: form.end_date,
+        leave_days: form.leave_days.trim() === '' ? days : Number(form.leave_days),
+        notes: form.notes.trim() || null,
+      });
+      onClose();
+    } catch (e) {
+      setError(e.message);
+      setSaving(false);
+    }
   };
 
   return (
@@ -111,9 +130,9 @@ function LeaveDialog({ leave, employees, types, onClose, onSave }) {
         <HStack gap={3}>
           <Selector
             label="Loại thai sản"
-            value={form.type_name}
-            onChange={set('type_name')}
-            options={types.map((t) => t.name)}
+            value={form.type_id}
+            onChange={set('type_id')}
+            options={types.map((t) => ({ value: String(t.id), label: t.name }))}
             hasSearch
             width="100%"
           />
@@ -154,10 +173,10 @@ function LeaveDialog({ leave, employees, types, onClose, onSave }) {
         {error ? <Text>{error}</Text> : null}
       </VStack>
       <HStack gap={2} justify="end" padding={4}>
-        <Button variant="ghost" label="Hủy" onClick={onClose}>
+        <Button variant="ghost" label="Hủy" onClick={onClose} isDisabled={saving}>
           Hủy
         </Button>
-        <Button variant="primary" label="Lưu" onClick={save}>
+        <Button variant="primary" label="Lưu" onClick={save} isDisabled={saving}>
           Lưu
         </Button>
       </HStack>
@@ -166,27 +185,69 @@ function LeaveDialog({ leave, employees, types, onClose, onSave }) {
 }
 
 export default function Maternity() {
-  const employees = useMemo(() => makeMockEmployees(60), []);
-  const types = useMemo(() => makeMockCatalogs()['maternity-types'], []);
-  const [leaves, setLeaves] = useState(() => makeMockMaternityLeaves(employees));
+  const [types, setTypes] = useState([]);
+  const [employees, setEmployees] = useState([]);
+  const [leaves, setLeaves] = useState([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
   const [q, setQ] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [dialog, setDialog] = useState(null); // null | {mode:'add'} | {mode:'edit', leave}
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [ctxLeave, setCtxLeave] = useState(null);
   const tableWrapRef = useRef(null);
+  const debouncedQ = useDebouncedValue(q, 350);
 
-  const filtered = useMemo(() => {
-    const needle = q.trim().toLowerCase();
-    return leaves.filter(
-      (l) =>
-        (!needle ||
-          l.employee.employee_code.toLowerCase().includes(needle) ||
-          l.employee.full_name.toLowerCase().includes(needle)) &&
-        (!typeFilter || l.maternity_type.name === typeFilter),
-    );
-  }, [leaves, q, typeFilter]);
+  // Danh mục + danh sách nhân viên cho ô chọn trong dialog (nạp một lần).
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const [t, emps] = await Promise.all([
+          maternityApi.listTypes(),
+          employeesApi.list({ page: 1, pageSize: 500 }),
+        ]);
+        if (!cancelled) {
+          setTypes(t);
+          setEmployees(emps.items);
+        }
+      } catch (e) {
+        if (!cancelled) setError(e.message);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
+  const reload = useCallback(async (pageNow, qNow, typeNow) => {
+    setLoading(true);
+    try {
+      const data = await maternityApi.list({
+        page: pageNow,
+        pageSize: PAGE_SIZE,
+        q: qNow.trim(),
+        typeId: typeNow === '' ? null : typeNow,
+      });
+      setLeaves(data.items);
+      setTotal(data.total);
+      setError('');
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    reload(page, debouncedQ, typeFilter);
+  }, [page, debouncedQ, typeFilter, reload]);
+
+  const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
+  // Chuột phải lên hàng nào thì mở context menu cho hàng đó
+  const leavesRef = useRef(leaves);
+  leavesRef.current = leaves;
   useEffect(() => {
     const el = tableWrapRef.current;
     if (!el) return;
@@ -194,29 +255,31 @@ export default function Maternity() {
       const tr = e.target.closest('tbody tr.sectionRowIndex');
       if (!tr) return;
       const id = Number(tr.dataset.id ?? tr.getAttribute('data-id'));
-      const found = filtered.find((l) => l.id === id);
+      const found = leavesRef.current.find((l) => l.id === id);
       if (found) setCtxLeave(found);
     };
     el.addEventListener('contextmenu', onContextMenu);
     return () => el.removeEventListener('contextmenu', onContextMenu);
-  }, [filtered]);
+  }, []);
 
   const openAdd = () => setDialog({ mode: 'add' });
   const openEdit = (leave) => setDialog({ mode: 'edit', leave });
 
-  const saveLeave = (payload) => {
+  const saveLeave = async (payload) => {
     if (dialog.mode === 'add') {
-      const nextId = leaves.reduce((m, l) => Math.max(m, l.id), 0) + 1;
-      setLeaves([{ id: nextId, ...payload }, ...leaves]);
+      await maternityApi.create(payload);
+      setPage(1);
+      await reload(1, debouncedQ, typeFilter);
     } else {
-      setLeaves(leaves.map((l) => (l.id === dialog.leave.id ? { ...l, ...payload } : l)));
+      await maternityApi.update(dialog.leave.id, payload);
+      await reload(page, debouncedQ, typeFilter);
     }
-    setDialog(null);
   };
 
-  const confirmDelete = () => {
-    setLeaves(leaves.filter((l) => l.id !== deleteTarget.id));
+  const confirmDelete = async () => {
+    await maternityApi.remove(deleteTarget.id);
     setDeleteTarget(null);
+    await reload(page, debouncedQ, typeFilter);
   };
 
   const columns = [
@@ -301,40 +364,60 @@ export default function Maternity() {
           isLabelHidden
           placeholder="Tìm theo mã/tên nhân viên..."
           value={q}
-          onChange={setQ}
+          onChange={(v) => { setQ(v); setPage(1); }}
           startIcon="search"
+          hasClear
           width={320}
         />
         <Selector
           label="Loại thai sản"
           isLabelHidden
           value={typeFilter}
-          onChange={setTypeFilter}
-          options={['', ...types.map((t) => t.name)]}
+          onChange={(v) => { setTypeFilter(v ?? ''); setPage(1); }}
+          options={[{ value: '', label: 'Tất cả loại' }, ...types.map((t) => ({ value: String(t.id), label: t.name }))]}
           width={240}
         />
-        <Text type="supporting">{filtered.length} hồ sơ</Text>
+        <Text type="supporting">{loading ? 'Đang tải...' : `${total} hồ sơ`}</Text>
       </HStack>
 
-      <VStack ref={tableWrapRef} gap={3} paddingBlockStart={4}>
-        <ContextMenu
-          isOpen={ctxLeave != null}
-          onOpenChange={(open) => {
-            if (!open) setCtxLeave(null);
-          }}
-          items={ctxLeave ? leaveMenuItems(ctxLeave, openEdit, setDeleteTarget) : []}
-        >
-          <Table
-            data={filtered}
-            columns={columns}
-            idKey="id"
-            density="balanced"
-            textOverflow="truncate"
-            verticalAlign="middle"
-            hasHover
-          />
-        </ContextMenu>
-      </VStack>
+      {error && leaves.length === 0 ? (
+        <VStack gap={3} align="center" padding={8}>
+          <Text>Không kết nối được tới backend: {error}</Text>
+          <Button variant="secondary" label="Thử lại" onClick={() => reload(page, debouncedQ, typeFilter)}>
+            Thử lại
+          </Button>
+        </VStack>
+      ) : (
+        <VStack ref={tableWrapRef} gap={3} paddingBlockStart={4}>
+          <ContextMenu
+            isOpen={ctxLeave != null}
+            onOpenChange={(open) => {
+              if (!open) setCtxLeave(null);
+            }}
+            items={ctxLeave ? leaveMenuItems(ctxLeave, openEdit, setDeleteTarget) : []}
+          >
+            <Table
+              data={leaves}
+              columns={columns}
+              idKey="id"
+              density="balanced"
+              textOverflow="truncate"
+              verticalAlign="middle"
+              hasHover
+            />
+          </ContextMenu>
+
+          <HStack gap={3} align="center" justify="end">
+            <Text type="supporting">Trang {page} / {pageCount}</Text>
+            <Button size="sm" variant="ghost" label="Trang trước" isDisabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
+              Trước
+            </Button>
+            <Button size="sm" variant="ghost" label="Trang sau" isDisabled={page >= pageCount} onClick={() => setPage((p) => p + 1)}>
+              Sau
+            </Button>
+          </HStack>
+        </VStack>
+      )}
 
       {dialog && (
         <LeaveDialog

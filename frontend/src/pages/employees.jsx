@@ -13,29 +13,46 @@ import { Table, pixel, proportional } from '@astryxdesign/core/Table';
 import { Text } from '@astryxdesign/core/Text';
 import { TextInput } from '@astryxdesign/core/TextInput';
 import { VStack } from '@astryxdesign/core/VStack';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import DialogTitle from '../components/dialog-title.jsx';
 import { EditIcon, PlusIcon } from '../components/icons.jsx';
+import { employeesApi } from '../lib/api.js';
 import { formatDate, parseDateInput } from '../lib/format.js';
-import { makeMockCatalogs, makeMockEmployees } from '../lib/mock-data.js';
 
-// TODO: thay mock bằng employeesApi (src/lib/api.js) khi backend chạy.
-const ALL = makeMockEmployees(60);
 const PAGE_SIZE = 15;
 
-const DEPARTMENTS = [...new Set(ALL.map((e) => e.department.name))].sort();
-const JOB_TITLES = makeMockCatalogs()['job-titles'].map((j) => j.name).sort();
-
-function rows(list) {
-  return list.map((e) => ({
-    ...e,
-    department_name: e.department.name,
-    position_name: e.position.name,
-    job_title_name: e.job_title?.name ?? '',
-  }));
+function useDebouncedValue(value, delay) {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const t = setTimeout(() => setDebounced(value), delay);
+    return () => clearTimeout(t);
+  }, [value, delay]);
+  return debounced;
 }
 
+function todayISO() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+// Form lưu id danh mục (string, '' = chưa chọn); khi lưu mới đổi sang number/null.
+function buildPayload(form) {
+  const toId = (v) => (v === '' ? null : Number(v));
+  return {
+    first_name: form.first_name.trim(),
+    last_name: form.last_name.trim(),
+    card_id: form.card_id.trim() === '' ? null : Number(form.card_id),
+    gender: form.gender,
+    birth_date: form.birth_date || null,
+    department_id: toId(form.department_id),
+    position_id: toId(form.position_id),
+    job_title_id: toId(form.job_title_id),
+    join_date: form.join_date || null,
+    salary_coefficient: form.salary_coefficient === '' ? null : Number(form.salary_coefficient),
+    is_active: form.is_active,
+    terminated_date: form.is_active ? null : form.terminated_date || null,
+  };
+}
 
 /**
  * Các tác vụ trên một nhân viên — DÙNG CHUNG cho cả hai nơi:
@@ -52,11 +69,7 @@ function employeeMenuItems(emp, { onEdit }) {
   ];
 }
 
-function todayISO() {
-  return new Date().toISOString().slice(0, 10);
-}
-
-function EmployeeDialog({ employee, onClose, onSave }) {
+function EmployeeDialog({ employee, departments, positions, jobTitles, onClose, onSave }) {
   const isEdit = Boolean(employee);
   // Tab đang mở. Sau này thêm tác vụ mới = thêm Tab + panel tương ứng ở đây.
   const [tab, setTab] = useState('info');
@@ -67,14 +80,16 @@ function EmployeeDialog({ employee, onClose, onSave }) {
     last_name: employee?.last_name ?? '',
     gender: employee?.gender ?? 'Nam',
     birth_date: employee?.birth_date ?? '',
-    department_name: employee?.department.name ?? DEPARTMENTS[0],
-    position_name: employee?.position.name ?? 'Công nhân',
-    job_title_name: employee?.job_title?.name ?? '',
+    department_id: employee?.department?.id != null ? String(employee.department.id) : '',
+    position_id: employee?.position?.id != null ? String(employee.position.id) : '',
+    job_title_id: employee?.job_title?.id != null ? String(employee.job_title.id) : '',
     join_date: employee?.join_date ?? '',
-    salary_coefficient: employee?.salary_coefficient ?? '1.00',
+    salary_coefficient: employee?.salary_coefficient != null ? String(employee.salary_coefficient) : '1.00',
     is_active: employee?.is_active ?? true,
     terminated_date: employee?.terminated_date ?? '',
   }));
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
   const set = (k) => (v) => setForm((f) => {
     const next = { ...f, [k]: v };
     // Tắt "đang làm việc" mà chưa có ngày nghỉ → mặc định hôm nay.
@@ -83,6 +98,20 @@ function EmployeeDialog({ employee, onClose, onSave }) {
     }
     return next;
   });
+
+  const handleSave = async () => {
+    setSaving(true);
+    setSaveError('');
+    try {
+      await onSave(form);
+      onClose();
+    } catch (e) {
+      setSaveError(e.message);
+      setSaving(false);
+    }
+  };
+
+  const catalogOptions = (list) => list.map((c) => ({ value: String(c.id), label: c.name }));
 
   return (
     <Dialog isOpen onOpenChange={(open) => !open && onClose()} width={600} maxHeight="85dvh">
@@ -110,12 +139,12 @@ function EmployeeDialog({ employee, onClose, onSave }) {
               <TextInput label="Ngày vào làm" value={formatDate(form.join_date)} onChange={(v) => set('join_date')(parseDateInput(v))} placeholder="dd-mm-yyyy" width="100%" />
             </HStack>
             <HStack gap={3}>
-              <Selector label="Đơn vị" value={form.department_name} onChange={set('department_name')} options={DEPARTMENTS} hasSearch width="100%" />
-              <TextInput label="Chức vụ" value={form.position_name} onChange={set('position_name')} width="100%" />
+              <Selector label="Đơn vị" value={form.department_id} onChange={set('department_id')} options={catalogOptions(departments)} hasSearch hasClear width="100%" />
+              <Selector label="Chức vụ" value={form.position_id} onChange={set('position_id')} options={catalogOptions(positions)} hasSearch hasClear width="100%" />
             </HStack>
             <HStack gap={3}>
               <TextInput label="Mã thẻ (thẻ từ)" value={form.card_id} onChange={set('card_id')} placeholder="Số thẻ chấm công" width="100%" />
-              <Selector label="Công việc" value={form.job_title_name} onChange={set('job_title_name')} options={JOB_TITLES} hasSearch width="100%" />
+              <Selector label="Công việc" value={form.job_title_id} onChange={set('job_title_id')} options={catalogOptions(jobTitles)} hasSearch hasClear width="100%" />
             </HStack>
             <TextInput label="Hệ số lương" value={form.salary_coefficient} onChange={set('salary_coefficient')} width={160} />
           </>
@@ -147,39 +176,88 @@ function EmployeeDialog({ employee, onClose, onSave }) {
             )}
           </>
         )}
+        {saveError && <Text type="supporting">{saveError}</Text>}
       </VStack>
       <HStack gap={2} justify="end" padding={4}>
-        <Button variant="ghost" label="Hủy" onClick={onClose}>Hủy</Button>
-        <Button variant="primary" label="Lưu" onClick={() => onSave(form)}>Lưu</Button>
+        <Button variant="ghost" label="Hủy" onClick={onClose} isDisabled={saving}>Hủy</Button>
+        <Button variant="primary" label="Lưu" onClick={handleSave} isDisabled={saving}>Lưu</Button>
       </HStack>
     </Dialog>
   );
 }
 
 export default function Employees() {
-  const [data, setData] = useState(ALL);
-  const [q, setQ] = useState('');
-  const [dept, setDept] = useState('');
+  const [rows, setRows] = useState([]);
+  const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
+  const [q, setQ] = useState('');
+  const [deptId, setDeptId] = useState('');
+  const [departments, setDepartments] = useState([]);
+  const [positions, setPositions] = useState([]);
+  const [jobTitles, setJobTitles] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [dialog, setDialog] = useState(null); // null | {mode:'add'} | {mode:'edit', employee}
   // Nhân viên đang được mở context menu bằng chuột phải lên row.
   const [ctxEmployee, setCtxEmployee] = useState(null);
   const tableWrapRef = useRef(null);
+  const debouncedQ = useDebouncedValue(q, 350);
 
-  const filtered = useMemo(() => {
-    const needle = q.trim().toLowerCase();
-    return data.filter(
-      (e) =>
-        (!needle ||
-          e.employee_code.toLowerCase().includes(needle) ||
-          e.full_name.toLowerCase().includes(needle) ||
-          String(e.card_id ?? '').includes(needle)) &&
-        (!dept || e.department.name === dept),
-    );
-  }, [data, q, dept]);
+  // Nạp danh mục một lần.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const [d, p, j] = await Promise.all([
+          employeesApi.listDepartments(),
+          employeesApi.listPositions(),
+          employeesApi.listJobTitles(),
+        ]);
+        if (!cancelled) {
+          setDepartments(d);
+          setPositions(p);
+          setJobTitles(j);
+        }
+      } catch (e) {
+        if (!cancelled) setError(e.message);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
-  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const pageRows = rows(filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE));
+  const reload = useCallback(async (pageNow, qNow, deptNow) => {
+    setLoading(true);
+    try {
+      const data = await employeesApi.list({
+        page: pageNow,
+        pageSize: PAGE_SIZE,
+        q: qNow.trim(),
+        departmentId: deptNow === '' ? null : deptNow,
+      });
+      setRows(data.items);
+      setTotal(data.total);
+      setError('');
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    reload(page, debouncedQ, deptId);
+  }, [page, debouncedQ, deptId, reload]);
+
+  const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const pageRows = useMemo(
+    () => rows.map((e) => ({
+      ...e,
+      department_name: e.department?.name ?? '',
+      position_name: e.position?.name ?? '',
+      job_title_name: e.job_title?.name ?? '',
+    })),
+    [rows],
+  );
 
   // Bắt row được chuột phải: native listener trên wrapper chạy trước khi
   // ContextMenu mở menu, nên menu luôn hiện đúng tác vụ của row đó.
@@ -204,32 +282,18 @@ export default function Employees() {
 
   const closeDialog = () => setDialog(null);
 
-  const saveEmployee = (form) => {
-    const base = {
-      first_name: form.first_name,
-      last_name: form.last_name,
-      full_name: `${form.first_name} ${form.last_name}`.trim(),
-      card_id: form.card_id.trim() === '' ? null : Number(form.card_id),
-      gender: form.gender,
-      birth_date: form.birth_date || null,
-      department: { id: 0, name: form.department_name },
-      position: { id: 0, name: form.position_name },
-      job_title: form.job_title_name ? { id: 0, name: form.job_title_name } : null,
-      join_date: form.join_date || null,
-      salary_coefficient: form.salary_coefficient,
-      is_active: form.is_active,
-      terminated_date: form.is_active ? null : form.terminated_date || null,
-    };
+  const saveEmployee = async (form) => {
     if (dialog?.mode === 'add') {
-      const n = Math.max(...data.map((e) => e.id)) + 1;
-      setData((d) => [...d, { id: n, employee_code: form.employee_code, ...base }]);
+      await employeesApi.create({
+        employee_code: form.employee_code.trim(),
+        ...buildPayload(form),
+      });
+      setPage(1);
+      await reload(1, debouncedQ, deptId);
     } else if (dialog?.mode === 'edit') {
-      setData((d) =>
-        d.map((e) => (e.id === dialog.employee.id ? { ...e, ...base } : e)),
-      );
+      await employeesApi.update(dialog.employee.id, buildPayload(form));
+      await reload(page, debouncedQ, deptId);
     }
-    closeDialog();
-    setPage(1);
   };
 
   const columns = [
@@ -295,7 +359,7 @@ export default function Employees() {
         <TextInput
           label="Tìm kiếm"
           isLabelHidden
-          placeholder="Tìm theo mã NV hoặc họ tên..."
+          placeholder="Tìm theo mã NV, mã thẻ hoặc họ tên..."
           value={q}
           onChange={(v) => { setQ(v); setPage(1); }}
           startIcon="search"
@@ -306,50 +370,62 @@ export default function Employees() {
           label="Đơn vị"
           isLabelHidden
           placeholder="Tất cả đơn vị"
-          value={dept}
-          onChange={(v) => { setDept(v ?? ''); setPage(1); }}
-          options={DEPARTMENTS}
+          value={deptId}
+          onChange={(v) => { setDeptId(v ?? ''); setPage(1); }}
+          options={departments.map((d) => ({ value: String(d.id), label: d.name }))}
           hasSearch
           hasClear
           width={240}
         />
-        <Text type="supporting">{filtered.length} nhân viên</Text>
+        <Text type="supporting">{loading ? 'Đang tải...' : `${total} nhân viên`}</Text>
       </HStack>
 
-      <VStack ref={tableWrapRef} gap={3} paddingBlockStart={4}>
-        <ContextMenu
-          label="Tác vụ nhân viên"
-          items={employeeMenuItems(ctxEmployee, {
-            onEdit: (emp) => setDialog({ mode: 'edit', employee: emp }),
-          })}
-        >
-          <Table
-            data={pageRows}
-            columns={columns}
-            idKey="id"
-            density="balanced"
-            textOverflow="truncate"
-            verticalAlign="middle"
-            hasHover
-            rowIndexStart={(page - 1) * PAGE_SIZE + 1}
-            rowCount={filtered.length}
-          />
-        </ContextMenu>
+      {error && rows.length === 0 ? (
+        <VStack gap={3} align="center" padding={8}>
+          <Text>Không kết nối được tới backend: {error}</Text>
+          <Button variant="secondary" label="Thử lại" onClick={() => reload(page, debouncedQ, deptId)}>
+            Thử lại
+          </Button>
+        </VStack>
+      ) : (
+        <VStack ref={tableWrapRef} gap={3} paddingBlockStart={4}>
+          <ContextMenu
+            label="Tác vụ nhân viên"
+            items={employeeMenuItems(ctxEmployee, {
+              onEdit: (emp) => setDialog({ mode: 'edit', employee: emp }),
+            })}
+          >
+            <Table
+              data={pageRows}
+              columns={columns}
+              idKey="id"
+              density="balanced"
+              textOverflow="truncate"
+              verticalAlign="middle"
+              hasHover
+              rowIndexStart={(page - 1) * PAGE_SIZE + 1}
+              rowCount={total}
+            />
+          </ContextMenu>
 
-        <HStack gap={3} align="center" justify="end">
-          <Text type="supporting">Trang {page} / {pageCount}</Text>
-          <Button size="sm" variant="ghost" label="Trang trước" isDisabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
-            Trước
-          </Button>
-          <Button size="sm" variant="ghost" label="Trang sau" isDisabled={page >= pageCount} onClick={() => setPage((p) => p + 1)}>
-            Sau
-          </Button>
-        </HStack>
-      </VStack>
+          <HStack gap={3} align="center" justify="end">
+            <Text type="supporting">Trang {page} / {pageCount}</Text>
+            <Button size="sm" variant="ghost" label="Trang trước" isDisabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
+              Trước
+            </Button>
+            <Button size="sm" variant="ghost" label="Trang sau" isDisabled={page >= pageCount} onClick={() => setPage((p) => p + 1)}>
+              Sau
+            </Button>
+          </HStack>
+        </VStack>
+      )}
 
       {dialog && (
         <EmployeeDialog
           employee={dialog.mode === 'edit' ? dialog.employee : null}
+          departments={departments}
+          positions={positions}
+          jobTitles={jobTitles}
           onClose={closeDialog}
           onSave={saveEmployee}
         />

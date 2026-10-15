@@ -1,6 +1,6 @@
 """CRUD hồ sơ nghỉ thai sản của nhân viên (từ `ns_xuly_thaisan` của hệ cũ).
 
-- List phân trang + lọc theo nhân viên / loại thai sản.
+- List phân trang + tìm kiếm theo mã/tên nhân viên + lọc theo nhân viên / loại thai sản.
 - leave_days tự tính từ khoảng ngày (bao gồm cả 2 đầu) khi không truyền vào;
   vẫn cho phép ghi đè thủ công theo chính sách nghỉ của công ty.
 """
@@ -44,6 +44,7 @@ def list_leaves(
     page_size: int = Query(50, ge=1, le=500),
     employee_id: int | None = None,
     maternity_type_id: int | None = None,
+    q: str | None = None,
 ):
     stmt = select(MaternityLeave).options(
         selectinload(MaternityLeave.employee),
@@ -53,6 +54,13 @@ def list_leaves(
         stmt = stmt.where(MaternityLeave.employee_id == employee_id)
     if maternity_type_id is not None:
         stmt = stmt.where(MaternityLeave.maternity_type_id == maternity_type_id)
+    if q:
+        like = f"%{q.strip()}%"
+        stmt = stmt.join(MaternityLeave.employee).where(
+            Employee.employee_code.ilike(like)
+            | Employee.first_name.ilike(like)
+            | Employee.last_name.ilike(like)
+        )
 
     total = db.scalar(select(func.count()).select_from(stmt.subquery()))
     items = db.scalars(
