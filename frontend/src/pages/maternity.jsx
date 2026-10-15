@@ -245,18 +245,21 @@ export default function Maternity() {
 
   const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
-  // Chuột phải lên hàng nào thì mở context menu cho hàng đó
+  // Chuột phải lên hàng nào thì mở context menu cho hàng đó (giống trang nhân viên)
   const leavesRef = useRef(leaves);
   leavesRef.current = leaves;
   useEffect(() => {
     const el = tableWrapRef.current;
     if (!el) return;
     const onContextMenu = (e) => {
-      const tr = e.target.closest('tbody tr.sectionRowIndex');
-      if (!tr) return;
-      const id = Number(tr.dataset.id ?? tr.getAttribute('data-id'));
-      const found = leavesRef.current.find((l) => l.id === id);
-      if (found) setCtxLeave(found);
+      const tr = e.target?.closest?.('tbody tr');
+      const rowsNow = leavesRef.current;
+      if (!tr || !el.contains(tr)) {
+        setCtxLeave(null);
+        return;
+      }
+      const idx = tr.sectionRowIndex;
+      setCtxLeave(idx >= 0 && idx < rowsNow.length ? rowsNow[idx] : null);
     };
     el.addEventListener('contextmenu', onContextMenu);
     return () => el.removeEventListener('contextmenu', onContextMenu);
@@ -316,33 +319,23 @@ export default function Maternity() {
     {
       key: 'actions',
       header: 'Thao tác',
-      width: pixel(110),
+      width: pixel(96),
       align: 'center',
       renderCell: (row) => (
-        <HStack gap={1} justify="center">
-          <DropdownMenu
-            label={`Tác vụ của ${row.employee.full_name}`}
-            items={leaveMenuItems(row, openEdit, setDeleteTarget)}
-            renderTrigger={(props) => (
-              <IconButton
-                icon={<EditIcon />}
-                label="Mở menu tác vụ"
-                tooltip="Tác vụ"
-                variant="ghost"
-                size="sm"
-                {...props}
-              />
-            )}
-          />
-          <IconButton
-            icon={<TrashIcon />}
-            label="Xóa hồ sơ"
-            tooltip="Xóa"
-            variant="ghost"
-            size="sm"
-            onClick={() => setDeleteTarget(row)}
-          />
-        </HStack>
+        <DropdownMenu
+          label={`Tác vụ của ${row.employee.full_name}`}
+          items={leaveMenuItems(row, openEdit, setDeleteTarget)}
+          renderTrigger={(props) => (
+            <IconButton
+              icon={<EditIcon />}
+              label="Mở menu tác vụ"
+              tooltip="Tác vụ"
+              variant="ghost"
+              size="sm"
+              {...props}
+            />
+          )}
+        />
       ),
     },
   ];
@@ -390,10 +383,7 @@ export default function Maternity() {
       ) : (
         <VStack ref={tableWrapRef} gap={3} paddingBlockStart={4}>
           <ContextMenu
-            isOpen={ctxLeave != null}
-            onOpenChange={(open) => {
-              if (!open) setCtxLeave(null);
-            }}
+            label="Tác vụ thai sản"
             items={ctxLeave ? leaveMenuItems(ctxLeave, openEdit, setDeleteTarget) : []}
           >
             <Table

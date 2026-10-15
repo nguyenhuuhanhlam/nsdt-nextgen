@@ -79,20 +79,25 @@ function CatalogManager({ kind }) {
     return items.filter((it) => it.name.toLowerCase().includes(q));
   }, [items, search]);
 
-  // Chuột phải lên hàng nào thì mở context menu cho hàng đó
+  // Chuột phải lên hàng nào thì mở context menu cho hàng đó (giống trang nhân viên)
+  const filteredRef = useRef(filtered);
+  filteredRef.current = filtered;
   useEffect(() => {
     const el = tableWrapRef.current;
     if (!el) return;
     const onContextMenu = (e) => {
-      const tr = e.target.closest('tbody tr.sectionRowIndex');
-      if (!tr) return;
-      const id = Number(tr.dataset.id ?? tr.getAttribute('data-id'));
-      const found = items.find((it) => it.id === id);
-      if (found) setCtxItem(found);
+      const tr = e.target?.closest?.('tbody tr');
+      const rowsNow = filteredRef.current;
+      if (!tr || !el.contains(tr)) {
+        setCtxItem(null);
+        return;
+      }
+      const idx = tr.sectionRowIndex;
+      setCtxItem(idx >= 0 && idx < rowsNow.length ? rowsNow[idx] : null);
     };
     el.addEventListener('contextmenu', onContextMenu);
     return () => el.removeEventListener('contextmenu', onContextMenu);
-  }, [items]);
+  }, []);
 
   const openAdd = () => {
     setName('');
@@ -156,33 +161,23 @@ function CatalogManager({ kind }) {
       {
         key: '__actions',
         header: 'Thao tác',
-        width: pixel(110),
+        width: pixel(96),
         align: 'center',
         renderCell: (row) => (
-          <HStack gap={1} justify="center">
-            <DropdownMenu
-              label={`Tác vụ của ${row.name}`}
-              items={catalogMenuItems(cfg, row, openEdit, setDeleteTarget)}
-              renderTrigger={(props) => (
-                <IconButton
-                  icon={<EditIcon />}
-                  label="Mở menu tác vụ"
-                  tooltip="Tác vụ"
-                  variant="ghost"
-                  size="sm"
-                  {...props}
-                />
-              )}
-            />
-            <IconButton
-              icon={<TrashIcon />}
-              label={`Xóa ${cfg.itemLabel}`}
-              tooltip="Xóa"
-              variant="ghost"
-              size="sm"
-              onClick={() => { setDeleteError(''); setDeleteTarget(row); }}
-            />
-          </HStack>
+          <DropdownMenu
+            label={`Tác vụ của ${row.name}`}
+            items={catalogMenuItems(cfg, row, openEdit, (it) => { setDeleteError(''); setDeleteTarget(it); })}
+            renderTrigger={(props) => (
+              <IconButton
+                icon={<EditIcon />}
+                label="Mở menu tác vụ"
+                tooltip="Tác vụ"
+                variant="ghost"
+                size="sm"
+                {...props}
+              />
+            )}
+          />
         ),
       },
     ],
@@ -225,10 +220,7 @@ function CatalogManager({ kind }) {
       ) : (
         <VStack ref={tableWrapRef} gap={3} paddingBlockStart={4}>
           <ContextMenu
-            isOpen={ctxItem != null}
-            onOpenChange={(open) => {
-              if (!open) setCtxItem(null);
-            }}
+            label="Tác vụ danh mục"
             items={ctxItem ? catalogMenuItems(cfg, ctxItem, openEdit, (it) => { setDeleteError(''); setDeleteTarget(it); }) : []}
           >
             <Table
