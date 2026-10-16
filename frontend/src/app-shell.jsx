@@ -44,7 +44,12 @@ const NAV = [
   },
   {
     section: 'Chấm công',
-    items: [{ label: 'Dữ liệu chấm công', href: '#/attendance', disabled: true, note: 'Sắp có' }],
+    items: [
+      { label: 'Nạp file chấm công', href: '#/attendance/import' },
+      { label: 'Lịch sử nạp file', href: '#/attendance/files' },
+      { label: 'Thẻ chưa khớp', href: '#/attendance/unmatched' },
+      { label: 'Lượt quẹt cần xem lại', href: '#/attendance/review' },
+    ],
   },
   {
     section: 'Lương',
@@ -66,6 +71,10 @@ const PALETTE_COMMANDS = [
   { id: 'marital-statuses', label: 'Hôn nhân', auxiliaryData: { path: '/catalogs/marital-statuses', keywords: ['hon nhan', 'danh muc'] } },
   { id: 'contract-types', label: 'Loại HĐLĐ', auxiliaryData: { path: '/catalogs/contract-types', keywords: ['hop dong', 'hdld', 'danh muc'] } },
   { id: 'maternity', label: 'Quản lý thai sản', auxiliaryData: { path: '/maternity', keywords: ['thai san', 'nghi sinh', 'nhan su'] } },
+  { id: 'attendance-import', label: 'Nạp file chấm công', auxiliaryData: { path: '/attendance/import', keywords: ['nap file', 'cham cong', 'may cham cong'] } },
+  { id: 'attendance-files', label: 'Lịch sử nạp file chấm công', auxiliaryData: { path: '/attendance/files', keywords: ['lich su', 'cham cong'] } },
+  { id: 'attendance-unmatched', label: 'Thẻ chưa khớp nhân viên', auxiliaryData: { path: '/attendance/unmatched', keywords: ['the la', 'chua khop', 'cham cong'] } },
+  { id: 'attendance-review', label: 'Lượt quẹt cần xem lại', auxiliaryData: { path: '/attendance/review', keywords: ['xem lai', 'cham cong', 'canh bao'] } },
 ];
 
 function TopBar({ onOpenPalette }) {

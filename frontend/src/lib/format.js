@@ -20,3 +20,11 @@ export function parseDateInput(str) {
   if (!m) return str;
   return `${m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}`;
 }
+
+/** ISO datetime -> dd-mm-yyyy hh:mm để hiển thị. */
+export function formatDateTime(value) {
+  if (!value) return '';
+  const m = /^(\d{4})-(\d{1,2})-(\d{1,2})[T ](\d{1,2}):(\d{1,2})/.exec(String(value));
+  if (!m) return String(value);
+  return `${m[3].padStart(2, '0')}-${m[2].padStart(2, '0')}-${m[1]} ${m[4].padStart(2, '0')}:${m[5].padStart(2, '0')}`;
+}
