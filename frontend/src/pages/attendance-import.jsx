@@ -50,6 +50,8 @@ export default function AttendanceImport() {
   const [error, setError] = useState('');
   const [result, setResult] = useState(null);
   const [unmatchedPage, setUnmatchedPage] = useState(1);
+  const [dedupPage, setDedupPage] = useState(1);
+  const [tablePageSize, setTablePageSize] = useState(25);
   const fileRef = useRef(null);
 
   const pickFile = () => fileRef.current?.click();
@@ -70,6 +72,7 @@ export default function AttendanceImport() {
       setExpandedDedupCard(null);
       setReportTab('overview');
       setUnmatchedPage(1);
+      setDedupPage(1);
     } catch (err) {
       setError(err.message);
       setReport(null);
@@ -110,20 +113,35 @@ export default function AttendanceImport() {
     setConfirmed([]);
     setExpandedDedupCard(null);
     setReportTab('overview');
+    setUnmatchedPage(1);
+    setDedupPage(1);
     setError('');
   };
 
   const toggleDate = (iso) =>
     setConfirmed((c) => (c.includes(iso) ? c.filter((d) => d !== iso) : [...c, iso]));
 
-  // Thẻ chưa khớp: phân trang phía client, 25 dòng/trang
-  const UNMATCHED_PAGE_SIZE = 25;
+  // Thẻ chưa khớp: phân trang phía client theo cỡ bảng đã chọn
   const unmatchedTotal = report?.unmatched_cards.length ?? 0;
-  const unmatchedPageCount = Math.max(1, Math.ceil(unmatchedTotal / UNMATCHED_PAGE_SIZE));
+  const unmatchedPageCount = Math.max(1, Math.ceil(unmatchedTotal / tablePageSize));
   const unmatchedRows = (report?.unmatched_cards ?? []).slice(
-    (unmatchedPage - 1) * UNMATCHED_PAGE_SIZE,
-    unmatchedPage * UNMATCHED_PAGE_SIZE,
+    (unmatchedPage - 1) * tablePageSize,
+    unmatchedPage * tablePageSize,
   );
+
+  // Gộp trùng theo thẻ: phân trang phía client theo cỡ bảng đã chọn
+  const dedupGroups = report?.dedup_by_card ?? [];
+  const dedupPageCount = Math.max(1, Math.ceil(dedupGroups.length / tablePageSize));
+  const dedupRows = dedupGroups.slice(
+    (dedupPage - 1) * tablePageSize,
+    dedupPage * tablePageSize,
+  );
+
+  const changeTablePageSize = (v) => {
+    setTablePageSize(Number(v));
+    setUnmatchedPage(1);
+    setDedupPage(1);
+  };
 
   const dateColumns = [
     {
@@ -197,22 +215,36 @@ export default function AttendanceImport() {
         <Heading level={4} weight="bold">
           Nạp file chấm công
         </Heading>
-        <input
-          ref={fileRef}
-          type="file"
-          accept=".txt"
-          hidden
-          onChange={onFile}
-        />
-        <Button
-          variant="primary"
-          label="Chọn file chấm công"
-          icon={<PlusIcon />}
-          onClick={pickFile}
-          isDisabled={parsing}
-        >
-          {parsing ? 'Đang kiểm tra...' : 'Chọn file'}
-        </Button>
+        <HStack gap={3} align="end">
+          <Selector
+            label="Số dòng mỗi bảng"
+            isLabelHidden
+            value={String(tablePageSize)}
+            onChange={changeTablePageSize}
+            options={[
+              { value: '25', label: '25 dòng/bảng' },
+              { value: '50', label: '50 dòng/bảng' },
+              { value: '100', label: '100 dòng/bảng' },
+            ]}
+            width={150}
+          />
+          <input
+            ref={fileRef}
+            type="file"
+            accept=".txt"
+            hidden
+            onChange={onFile}
+          />
+          <Button
+            variant="primary"
+            label="Chọn file chấm công"
+            icon={<PlusIcon />}
+            onClick={pickFile}
+            isDisabled={parsing}
+          >
+            {parsing ? 'Đang kiểm tra...' : 'Chọn file'}
+          </Button>
+        </HStack>
       </HStack>
 
       {error ? <Text>{error}</Text> : null}
@@ -266,7 +298,7 @@ export default function AttendanceImport() {
                     tiên) — bấm vào từng thẻ để xem các lượt gần nhau
                   </Text>
                   <Table
-                    data={report.dedup_by_card}
+                    data={dedupRows}
                     columns={[
                       { key: 'card', header: 'Mã thẻ', width: proportional(1), renderCell: (r) => r.card_id },
                       { key: 'count', header: 'Số lượt bị gộp', width: pixel(140), align: 'center', renderCell: (r) => r.merged_count },
@@ -292,6 +324,29 @@ export default function AttendanceImport() {
                     verticalAlign="middle"
                     hasHover
                   />
+                  {dedupPageCount > 1 && (
+                    <HStack gap={3} align="center" justify="end">
+                      <Text type="supporting">Trang {dedupPage} / {dedupPageCount}</Text>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        label="Trang trước"
+                        isDisabled={dedupPage <= 1}
+                        onClick={() => setDedupPage((p) => p - 1)}
+                      >
+                        Trước
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        label="Trang sau"
+                        isDisabled={dedupPage >= dedupPageCount}
+                        onClick={() => setDedupPage((p) => p + 1)}
+                      >
+                        Sau
+                      </Button>
+                    </HStack>
+                  )}
                   {(() => {
                     const g = report.dedup_by_card.find((x) => x.card_id === expandedDedupCard);
                     if (!g) return null;
