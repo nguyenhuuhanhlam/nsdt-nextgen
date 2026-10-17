@@ -31,7 +31,7 @@ from app.schemas.attendance import (
     AttendanceFileRead,
     DateBreakdown,
     DedupCardGroup,
-    DedupDetailRead,
+    DedupLineRead,
     ImportRequest,
     ImportResult,
     PaginatedFiles,
@@ -56,7 +56,7 @@ UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 MAX_FILE_SIZE = 20 * 1024 * 1024  # 20MB
 INSERT_CHUNK = 1000
 ERROR_SAMPLES = 20  # số dòng lỗi mẫu trong báo cáo
-DEDUP_GROUP_SAMPLES = 10  # số lượt mẫu tối đa cho mỗi thẻ trong nhóm gộp trùng
+DEDUP_GROUP_LINES = 20  # số lượt bị gộp tối đa liệt kê cho mỗi thẻ
 
 
 def _parsed_path(upload_id: str) -> Path:
@@ -108,28 +108,38 @@ def _unmatched_cards(valid_rows: list[TapRow], emp_map: dict[int, int],
 
 
 def _dedup_by_card(parsed) -> list[DedupCardGroup]:
-    """Nhóm các lượt bị gộp trùng theo mã thẻ, nhiều nhất lên trước."""
+    """Nhóm các lượt quẹt gần nhau theo mã thẻ, thẻ bị gộp nhiều nhất lên trước.
+
+    Mỗi nhóm liệt kê đầy đủ các dòng liên quan theo thứ tự giờ quẹt,
+    đánh dấu dòng nào được giữ lại.
+    """
     groups: dict[int, dict] = {}
     for d in parsed.dedup_details:
-        g = groups.setdefault(d.card_id, {"merged_count": 0, "samples": []})
+        g = groups.setdefault(d.card_id, {"merged_count": 0, "lines": {}})
         g["merged_count"] += 1
-        if len(g["samples"]) < DEDUP_GROUP_SAMPLES:
-            g["samples"].append(
-                DedupDetailRead(
-                    line_no=d.line_no,
-                    card_id=d.card_id,
-                    tap_datetime=d.tap_datetime.strftime("%d-%m-%Y %H:%M:%S"),
-                    kept_line_no=d.kept_line_no,
-                    kept_datetime=d.kept_datetime.strftime("%d-%m-%Y %H:%M:%S"),
-                )
+        lines = g["lines"]
+        lines.setdefault(d.kept_line_no, (d.kept_datetime, True))
+        dropped = sum(1 for _, kept in lines.values() if not kept)
+        if d.line_no not in lines and dropped < DEDUP_GROUP_LINES:
+            lines[d.line_no] = (d.tap_datetime, False)
+    result = []
+    for cid, g in groups.items():
+        ordered = sorted(g["lines"].items(), key=lambda kv: kv[1][0])
+        result.append(
+            DedupCardGroup(
+                card_id=cid,
+                merged_count=g["merged_count"],
+                lines=[
+                    DedupLineRead(
+                        line_no=line_no,
+                        tap_datetime=dt.strftime("%d-%m-%Y %H:%M:%S"),
+                        kept=kept,
+                    )
+                    for line_no, (dt, kept) in ordered
+                ],
             )
-    return sorted(
-        (
-            DedupCardGroup(card_id=cid, merged_count=g["merged_count"], samples=g["samples"])
-            for cid, g in groups.items()
-        ),
-        key=lambda x: -x.merged_count,
-    )
+        )
+    return sorted(result, key=lambda x: -x.merged_count)
 
 
 def _build_report(

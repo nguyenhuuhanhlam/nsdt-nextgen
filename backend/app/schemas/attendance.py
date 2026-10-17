@@ -26,22 +26,20 @@ class UnmatchedCardRead(BaseModel):
     times: dict[str, list[str]] = Field(default_factory=dict)
 
 
-class DedupDetailRead(BaseModel):
-    """Một lượt quẹt bị gộp trùng: dòng nào, thẻ nào, gộp vào dòng nào."""
+class DedupLineRead(BaseModel):
+    """Một dòng trong nhóm trùng: dòng nào, quẹt lúc nào, có phải dòng được giữ."""
 
     line_no: int
-    card_id: int
     tap_datetime: str
-    kept_line_no: int
-    kept_datetime: str
+    kept: bool
 
 
 class DedupCardGroup(BaseModel):
-    """Các lượt bị gộp của một mã thẻ: click vào để xem chi tiết từng lượt."""
+    """Các lượt quẹt gần nhau của một mã thẻ: click vào để xem từng dòng."""
 
     card_id: int
     merged_count: int
-    samples: list[DedupDetailRead] = Field(default_factory=list)
+    lines: list[DedupLineRead] = Field(default_factory=list)
 
 
 class ParseReport(BaseModel):

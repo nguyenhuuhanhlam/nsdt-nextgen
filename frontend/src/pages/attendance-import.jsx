@@ -268,26 +268,25 @@ export default function AttendanceImport() {
                 {(() => {
                   const g = report.dedup_by_card.find((x) => x.card_id === expandedDedupCard);
                   if (!g) return null;
+                  const shownDropped = g.lines.filter((l) => !l.kept).length;
                   return (
-                    <VStack gap={2}>
+                    <VStack gap={1}>
                       <Text weight="bold">
-                        Thẻ {g.card_id}: {g.merged_count} lượt bị gộp
+                        Thẻ {g.card_id}: các lượt quẹt gần nhau theo thứ tự giờ
                       </Text>
-                      <Table
-                        data={g.samples}
-                        columns={[
-                          { key: 'line', header: 'Dòng bị gộp', width: pixel(110), align: 'center', renderCell: (r) => r.line_no },
-                          { key: 'time', header: 'Giờ quẹt', width: pixel(170), renderCell: (r) => r.tap_datetime },
-                          { key: 'kept', header: 'Gộp vào dòng', width: pixel(110), align: 'center', renderCell: (r) => r.kept_line_no },
-                          { key: 'kepttime', header: 'Giờ được giữ', width: pixel(170), renderCell: (r) => r.kept_datetime },
-                        ]}
-                        idKey="line_no"
-                        density="balanced"
-                        verticalAlign="middle"
-                      />
-                      {g.samples.length < g.merged_count && (
+                      {g.lines.map((l) => (
+                        <Text
+                          key={l.line_no}
+                          color={l.kept ? 'accent' : undefined}
+                          weight={l.kept ? 'bold' : undefined}
+                        >
+                          Dòng {l.line_no} — {l.tap_datetime}
+                          {l.kept ? ' (giữ lại)' : ''}
+                        </Text>
+                      ))}
+                      {shownDropped < g.merged_count && (
                         <Text type="supporting">
-                          Hiện {g.samples.length}/{g.merged_count} lượt mẫu.
+                          Hiện một phần ({shownDropped}/{g.merged_count} lượt bị gộp).
                         </Text>
                       )}
                     </VStack>
