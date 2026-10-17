@@ -48,6 +48,7 @@ export default function AttendanceImport() {
   const [confirmed, setConfirmed] = useState([]);
   const [replaceExisting, setReplaceExisting] = useState(false);
   const [showErrors, setShowErrors] = useState(false);
+  const [errorDialog, setErrorDialog] = useState(null); // dòng lỗi đang xem chi tiết
   const [dedupDialog, setDedupDialog] = useState(null); // group dedup đang xem chi tiết
   const [reportTab, setReportTab] = useState('overview');
   const [parsing, setParsing] = useState(false);
@@ -74,6 +75,7 @@ export default function AttendanceImport() {
       setConfirmed([]);
       setReplaceExisting(false);
       setShowErrors(false);
+      setErrorDialog(null);
       setDedupDialog(null);
       setReportTab('overview');
       setUnmatchedPage(1);
@@ -116,7 +118,9 @@ export default function AttendanceImport() {
     setReport(null);
     setResult(null);
     setConfirmed([]);
-    setExpandedDedupCard(null);
+    setDedupDialog(null);
+    setShowErrors(false);
+    setErrorDialog(null);
     setReportTab('overview');
     setUnmatchedPage(1);
     setDedupPage(1);
@@ -319,13 +323,29 @@ export default function AttendanceImport() {
                     <Table
                       data={report.error_samples}
                       columns={[
-                        { key: 'line', header: 'Dòng', width: pixel(80), renderCell: (r) => r.line_no },
+                        { key: 'line', header: 'Dòng', width: pixel(80), align: 'center', renderCell: (r) => r.line_no },
                         { key: 'code', header: 'Mã', width: pixel(70), renderCell: (r) => r.code },
                         {
                           key: 'msg',
                           header: 'Lý do',
                           width: proportional(1),
                           renderCell: (r) => r.message,
+                        },
+                        {
+                          key: 'detail',
+                          header: 'Chi tiết',
+                          width: pixel(80),
+                          align: 'center',
+                          renderCell: (r) => (
+                            <IconButton
+                              icon={<EyeIcon />}
+                              label={`Xem nội dung dòng lỗi ${r.line_no}`}
+                              tooltip="Xem chi tiết"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setErrorDialog(r)}
+                            />
+                          ),
                         },
                       ]}
                       idKey="line_no"
@@ -514,6 +534,38 @@ export default function AttendanceImport() {
             </Button>
           </HStack>
         </VStack>
+      )}
+
+      {errorDialog && (
+        <Dialog
+          isOpen
+          onOpenChange={(open) => !open && setErrorDialog(null)}
+          width={560}
+          maxHeight="85dvh"
+        >
+          <DialogTitle onClose={() => setErrorDialog(null)}>
+            Dòng lỗi {errorDialog.line_no}
+          </DialogTitle>
+          <VStack gap={3} padding={4}>
+            <HStack gap={6}>
+              <Stat label="Mã lỗi" value={`${errorDialog.code} — ${ERROR_LABELS[errorDialog.code] ?? ''}`} />
+              <Stat label="Dòng trong file" value={errorDialog.line_no} />
+            </HStack>
+            <VStack gap={1}>
+              <Text type="supporting">Lý do</Text>
+              <Text>{errorDialog.message}</Text>
+            </VStack>
+            <VStack gap={1}>
+              <Text type="supporting">Nội dung dòng trong file</Text>
+              <Text>{errorDialog.content}</Text>
+            </VStack>
+          </VStack>
+          <HStack gap={2} justify="end" padding={4}>
+            <Button variant="ghost" label="Đóng" onClick={() => setErrorDialog(null)}>
+              Đóng
+            </Button>
+          </HStack>
+        </Dialog>
       )}
 
       {dedupDialog && (() => {
