@@ -1,5 +1,6 @@
 // Nạp file chấm công — luồng 3 bước: chọn file -> báo cáo kiểm tra -> xác nhận nạp.
 import { Button } from '@astryxdesign/core/Button';
+import { Banner } from '@astryxdesign/core/Banner';
 import { Dialog } from '@astryxdesign/core/Dialog';
 import { Divider } from '@astryxdesign/core/Divider';
 import { Heading } from '@astryxdesign/core/Heading';
@@ -295,6 +296,56 @@ export default function AttendanceImport() {
                 </VStack>
               )}
 
+              {report.error_rows > 0 && (
+                <VStack gap={2}>
+                  <Banner
+                    status="error"
+                    title={`${report.error_rows} dòng lỗi — bị loại khỏi đợt nạp`}
+                    description={Object.entries(report.error_counts)
+                      .map(([code, n]) => `${code} (${ERROR_LABELS[code] ?? code}): ${n} dòng`)
+                      .join('; ')}
+                    endContent={
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        label={showErrors ? 'Ẩn chi tiết lỗi' : 'Xem chi tiết lỗi'}
+                        onClick={() => setShowErrors((s) => !s)}
+                      >
+                        {showErrors ? 'Ẩn' : 'Xem'}
+                      </Button>
+                    }
+                  />
+                  {showErrors && (
+                    <Table
+                      data={report.error_samples}
+                      columns={[
+                        { key: 'line', header: 'Dòng', width: pixel(80), renderCell: (r) => r.line_no },
+                        { key: 'code', header: 'Mã', width: pixel(70), renderCell: (r) => r.code },
+                        {
+                          key: 'msg',
+                          header: 'Lý do',
+                          width: proportional(1),
+                          renderCell: (r) => r.message,
+                        },
+                      ]}
+                      idKey="line_no"
+                      density="balanced"
+                      verticalAlign="middle"
+                    />
+                  )}
+                </VStack>
+              )}
+
+              {Object.keys(report.flag_counts).length > 0 && (
+                <Banner
+                  status="warning"
+                  title="Cảnh báo — vẫn nạp, gắn cờ để xem lại sau"
+                  description={Object.entries(report.flag_counts)
+                    .map(([flag, n]) => `${FLAG_LABELS[flag] ?? flag}: ${n} lượt`)
+                    .join('; ')}
+                />
+              )}
+
               {report.deduped_count > 0 && (
                 <VStack gap={2}>
                   <Text weight="bold">
@@ -354,57 +405,6 @@ export default function AttendanceImport() {
                 </VStack>
               )}
 
-              {report.error_rows > 0 && (
-                <VStack gap={2}>
-                  <HStack gap={3} align="center">
-                    <Text weight="bold">
-                      {report.error_rows} dòng lỗi (bị loại khỏi đợt nạp)
-                    </Text>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      label={showErrors ? 'Ẩn chi tiết lỗi' : 'Xem chi tiết lỗi'}
-                      onClick={() => setShowErrors((s) => !s)}
-                    >
-                      {showErrors ? 'Ẩn' : 'Xem'}
-                    </Button>
-                  </HStack>
-                  {Object.entries(report.error_counts).map(([code, n]) => (
-                    <Text key={code} type="supporting">
-                      {code} — {ERROR_LABELS[code] ?? code}: {n} dòng
-                    </Text>
-                  ))}
-                  {showErrors && (
-                    <Table
-                      data={report.error_samples}
-                      columns={[
-                        { key: 'line', header: 'Dòng', width: pixel(80), renderCell: (r) => r.line_no },
-                        { key: 'code', header: 'Mã', width: pixel(70), renderCell: (r) => r.code },
-                        {
-                          key: 'msg',
-                          header: 'Lý do',
-                          width: proportional(1),
-                          renderCell: (r) => r.message,
-                        },
-                      ]}
-                      idKey="line_no"
-                      density="balanced"
-                      verticalAlign="middle"
-                    />
-                  )}
-                </VStack>
-              )}
-
-              {Object.keys(report.flag_counts).length > 0 && (
-                <VStack gap={1}>
-                  <Text weight="bold">Cảnh báo (vẫn nạp, gắn cờ để xem lại sau)</Text>
-                  {Object.entries(report.flag_counts).map(([flag, n]) => (
-                    <Text key={flag} type="supporting">
-                      {FLAG_LABELS[flag] ?? flag}: {n} lượt
-                    </Text>
-                  ))}
-                </VStack>
-              )}
             </VStack>
           )}
 
