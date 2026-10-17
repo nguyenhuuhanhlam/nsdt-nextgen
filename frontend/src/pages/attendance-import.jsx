@@ -5,6 +5,7 @@ import { Heading } from '@astryxdesign/core/Heading';
 import { HStack } from '@astryxdesign/core/HStack';
 import { Switch } from '@astryxdesign/core/Switch';
 import { Table, pixel, proportional } from '@astryxdesign/core/Table';
+import { Tab, TabList } from '@astryxdesign/core/TabList';
 import { Text } from '@astryxdesign/core/Text';
 import { VStack } from '@astryxdesign/core/VStack';
 import { useRef, useState } from 'react';
@@ -43,6 +44,7 @@ export default function AttendanceImport() {
   const [replaceExisting, setReplaceExisting] = useState(false);
   const [showErrors, setShowErrors] = useState(false);
   const [expandedDedupCard, setExpandedDedupCard] = useState(null);
+  const [reportTab, setReportTab] = useState('overview');
   const [parsing, setParsing] = useState(false);
   const [importing, setImporting] = useState(false);
   const [error, setError] = useState('');
@@ -66,6 +68,7 @@ export default function AttendanceImport() {
       setReplaceExisting(false);
       setShowErrors(false);
       setExpandedDedupCard(null);
+      setReportTab('overview');
       setUnmatchedPage(1);
     } catch (err) {
       setError(err.message);
@@ -106,6 +109,7 @@ export default function AttendanceImport() {
     setResult(null);
     setConfirmed([]);
     setExpandedDedupCard(null);
+    setReportTab('overview');
     setError('');
   };
 
@@ -222,211 +226,222 @@ export default function AttendanceImport() {
 
       {report && !result && (
         <VStack gap={4}>
-          <HStack gap={6}>
-            <Stat label="File" value={report.filename} />
-            <Stat label="Tổng dòng" value={report.total_rows} />
-            <Stat label="Hợp lệ" value={report.valid_rows} />
-            <Stat label="Lỗi" value={report.error_rows} />
-            <Stat label="Đã gộp trùng" value={report.deduped_count} />
-            <Stat label="Nạp được" value={report.importable_rows} />
-          </HStack>
-
-          {report.deduped_count > 0 && (
-            <>
-              <VStack gap={2}>
-                <Text weight="bold">
-                  {report.deduped_count} lượt trùng đã gộp (giữ lại lượt quẹt đầu
-                  tiên) — bấm vào từng thẻ để xem các lượt gần nhau
-                </Text>
-                <Table
-                  data={report.dedup_by_card}
-                  columns={[
-                    { key: 'card', header: 'Mã thẻ', width: proportional(1), renderCell: (r) => r.card_id },
-                    { key: 'count', header: 'Số lượt bị gộp', width: pixel(140), align: 'center', renderCell: (r) => r.merged_count },
-                    {
-                      key: 'detail',
-                      header: 'Chi tiết',
-                      width: pixel(120),
-                      align: 'center',
-                      renderCell: (r) => (
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          label={expandedDedupCard === r.card_id ? `Ẩn chi tiết thẻ ${r.card_id}` : `Xem chi tiết thẻ ${r.card_id}`}
-                          onClick={() => setExpandedDedupCard((c) => (c === r.card_id ? null : r.card_id))}
-                        >
-                          {expandedDedupCard === r.card_id ? 'Ẩn' : 'Xem'}
-                        </Button>
-                      ),
-                    },
-                  ]}
-                  idKey="card_id"
-                  density="balanced"
-                  verticalAlign="middle"
-                  hasHover
-                />
-                {(() => {
-                  const g = report.dedup_by_card.find((x) => x.card_id === expandedDedupCard);
-                  if (!g) return null;
-                  const shownDropped = g.lines.filter((l) => !l.kept).length;
-                  return (
-                    <VStack gap={1}>
-                      <Text weight="bold">
-                        Thẻ {g.card_id}: các lượt quẹt gần nhau theo thứ tự giờ
-                      </Text>
-                      {g.lines.map((l) => (
-                        <Text
-                          key={l.line_no}
-                          color={l.kept ? 'accent' : undefined}
-                          weight={l.kept ? 'bold' : undefined}
-                        >
-                          Dòng {l.line_no} — {l.tap_datetime}
-                          {l.kept ? ' (giữ lại)' : ''}
-                        </Text>
-                      ))}
-                      {shownDropped < g.merged_count && (
-                        <Text type="supporting">
-                          Hiện một phần ({shownDropped}/{g.merged_count} lượt bị gộp).
-                        </Text>
-                      )}
-                    </VStack>
-                  );
-                })()}
-              </VStack>
-              <Divider />
-            </>
-          )}
-
-          {report.already_imported && (
-            <>
-              <VStack gap={2}>
-                <Text weight="bold">
-                  File này đã được nạp trước đó. Mặc định sẽ bỏ qua.
-                </Text>
-                <Switch
-                  label="Nạp lại thay thế đợt cũ"
-                  value={replaceExisting}
-                  onChange={setReplaceExisting}
-                />
-              </VStack>
-              <Divider />
-            </>
-          )}
-
-          <VStack gap={2}>
-            <Text weight="bold">
-              Ngày trong file — hãy kiểm tra rồi bật xác nhận từng ngày
-            </Text>
-            <Table
-              data={report.dates}
-              columns={dateColumns}
-              idKey="date"
-              density="balanced"
-              verticalAlign="middle"
+          <TabList value={reportTab} onChange={setReportTab} hasDivider>
+            <Tab value="overview" label="Tổng quan" />
+            <Tab value="dates" label="Ngày trong file" />
+            <Tab
+              value="unmatched"
+              label={`Thẻ chưa khớp (${report.unmatched_cards.length})`}
             />
-          </VStack>
+          </TabList>
 
-          <Divider />
+          {reportTab === 'overview' && (
+            <VStack gap={4}>
+              <HStack gap={6}>
+                <Stat label="File" value={report.filename} />
+                <Stat label="Tổng dòng" value={report.total_rows} />
+                <Stat label="Hợp lệ" value={report.valid_rows} />
+                <Stat label="Lỗi" value={report.error_rows} />
+                <Stat label="Đã gộp trùng" value={report.deduped_count} />
+                <Stat label="Nạp được" value={report.importable_rows} />
+              </HStack>
 
-          {report.error_rows > 0 && (
-            <>
-              <VStack gap={2}>
-                <HStack gap={3} align="center">
+              {report.already_imported && (
+                <VStack gap={2}>
                   <Text weight="bold">
-                    {report.error_rows} dòng lỗi (bị loại khỏi đợt nạp)
+                    File này đã được nạp trước đó. Mặc định sẽ bỏ qua.
                   </Text>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    label={showErrors ? 'Ẩn chi tiết lỗi' : 'Xem chi tiết lỗi'}
-                    onClick={() => setShowErrors((s) => !s)}
-                  >
-                    {showErrors ? 'Ẩn' : 'Xem'}
-                  </Button>
-                </HStack>
-                {Object.entries(report.error_counts).map(([code, n]) => (
-                  <Text key={code} type="supporting">
-                    {code} — {ERROR_LABELS[code] ?? code}: {n} dòng
+                  <Switch
+                    label="Nạp lại thay thế đợt cũ"
+                    value={replaceExisting}
+                    onChange={setReplaceExisting}
+                  />
+                </VStack>
+              )}
+
+              {report.deduped_count > 0 && (
+                <VStack gap={2}>
+                  <Text weight="bold">
+                    {report.deduped_count} lượt trùng đã gộp (giữ lại lượt quẹt đầu
+                    tiên) — bấm vào từng thẻ để xem các lượt gần nhau
                   </Text>
-                ))}
-                {showErrors && (
                   <Table
-                    data={report.error_samples}
+                    data={report.dedup_by_card}
                     columns={[
-                      { key: 'line', header: 'Dòng', width: pixel(80), renderCell: (r) => r.line_no },
-                      { key: 'code', header: 'Mã', width: pixel(70), renderCell: (r) => r.code },
+                      { key: 'card', header: 'Mã thẻ', width: proportional(1), renderCell: (r) => r.card_id },
+                      { key: 'count', header: 'Số lượt bị gộp', width: pixel(140), align: 'center', renderCell: (r) => r.merged_count },
                       {
-                        key: 'msg',
-                        header: 'Lý do',
-                        width: proportional(1),
-                        renderCell: (r) => r.message,
+                        key: 'detail',
+                        header: 'Chi tiết',
+                        width: pixel(120),
+                        align: 'center',
+                        renderCell: (r) => (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            label={expandedDedupCard === r.card_id ? `Ẩn chi tiết thẻ ${r.card_id}` : `Xem chi tiết thẻ ${r.card_id}`}
+                            onClick={() => setExpandedDedupCard((c) => (c === r.card_id ? null : r.card_id))}
+                          >
+                            {expandedDedupCard === r.card_id ? 'Ẩn' : 'Xem'}
+                          </Button>
+                        ),
                       },
                     ]}
-                    idKey="line_no"
+                    idKey="card_id"
+                    density="balanced"
+                    verticalAlign="middle"
+                    hasHover
+                  />
+                  {(() => {
+                    const g = report.dedup_by_card.find((x) => x.card_id === expandedDedupCard);
+                    if (!g) return null;
+                    const shownDropped = g.lines.filter((l) => !l.kept).length;
+                    return (
+                      <VStack gap={1}>
+                        <Text weight="bold">
+                          Thẻ {g.card_id}: các lượt quẹt gần nhau theo thứ tự giờ
+                        </Text>
+                        {g.lines.map((l) => (
+                          <Text
+                            key={l.line_no}
+                            color={l.kept ? 'accent' : undefined}
+                            weight={l.kept ? 'bold' : undefined}
+                          >
+                            Dòng {l.line_no} — {l.tap_datetime}
+                            {l.kept ? ' (giữ lại)' : ''}
+                          </Text>
+                        ))}
+                        {shownDropped < g.merged_count && (
+                          <Text type="supporting">
+                            Hiện một phần ({shownDropped}/{g.merged_count} lượt bị gộp).
+                          </Text>
+                        )}
+                      </VStack>
+                    );
+                  })()}
+                </VStack>
+              )}
+
+              {report.error_rows > 0 && (
+                <VStack gap={2}>
+                  <HStack gap={3} align="center">
+                    <Text weight="bold">
+                      {report.error_rows} dòng lỗi (bị loại khỏi đợt nạp)
+                    </Text>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      label={showErrors ? 'Ẩn chi tiết lỗi' : 'Xem chi tiết lỗi'}
+                      onClick={() => setShowErrors((s) => !s)}
+                    >
+                      {showErrors ? 'Ẩn' : 'Xem'}
+                    </Button>
+                  </HStack>
+                  {Object.entries(report.error_counts).map(([code, n]) => (
+                    <Text key={code} type="supporting">
+                      {code} — {ERROR_LABELS[code] ?? code}: {n} dòng
+                    </Text>
+                  ))}
+                  {showErrors && (
+                    <Table
+                      data={report.error_samples}
+                      columns={[
+                        { key: 'line', header: 'Dòng', width: pixel(80), renderCell: (r) => r.line_no },
+                        { key: 'code', header: 'Mã', width: pixel(70), renderCell: (r) => r.code },
+                        {
+                          key: 'msg',
+                          header: 'Lý do',
+                          width: proportional(1),
+                          renderCell: (r) => r.message,
+                        },
+                      ]}
+                      idKey="line_no"
+                      density="balanced"
+                      verticalAlign="middle"
+                    />
+                  )}
+                </VStack>
+              )}
+
+              {Object.keys(report.flag_counts).length > 0 && (
+                <VStack gap={1}>
+                  <Text weight="bold">Cảnh báo (vẫn nạp, gắn cờ để xem lại sau)</Text>
+                  {Object.entries(report.flag_counts).map(([flag, n]) => (
+                    <Text key={flag} type="supporting">
+                      {FLAG_LABELS[flag] ?? flag}: {n} lượt
+                    </Text>
+                  ))}
+                </VStack>
+              )}
+            </VStack>
+          )}
+
+          {reportTab === 'dates' && (
+            <VStack gap={2}>
+              <Text weight="bold">
+                Ngày trong file — hãy kiểm tra rồi bật xác nhận từng ngày
+              </Text>
+              <Table
+                data={report.dates}
+                columns={dateColumns}
+                idKey="date"
+                density="balanced"
+                verticalAlign="middle"
+              />
+              {!allConfirmed && (
+                <Text type="supporting">
+                  Hãy bật "Đã kiểm tra" cho tất cả các ngày trong file trước khi nạp.
+                </Text>
+              )}
+            </VStack>
+          )}
+
+          {reportTab === 'unmatched' && (
+            <VStack gap={2}>
+              {report.unmatched_cards.length === 0 ? (
+                <Text type="supporting">Không có thẻ nào chưa khớp nhân viên.</Text>
+              ) : (
+                <>
+                  <Text weight="bold">
+                    {report.unmatched_cards.length} thẻ chưa khớp nhân viên — sẽ bị
+                    loại khỏi đợt nạp, phải gán thẻ rồi nạp lại file
+                  </Text>
+                  <Table
+                    data={unmatchedRows}
+                    columns={unmatchedColumns}
+                    idKey="card_id"
                     density="balanced"
                     verticalAlign="middle"
                   />
-                )}
-              </VStack>
-              <Divider />
-            </>
+                  {unmatchedPageCount > 1 && (
+                    <HStack gap={3} align="center" justify="end">
+                      <Text type="supporting">Trang {unmatchedPage} / {unmatchedPageCount}</Text>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        label="Trang trước"
+                        isDisabled={unmatchedPage <= 1}
+                        onClick={() => setUnmatchedPage((p) => p - 1)}
+                      >
+                        Trước
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        label="Trang sau"
+                        isDisabled={unmatchedPage >= unmatchedPageCount}
+                        onClick={() => setUnmatchedPage((p) => p + 1)}
+                      >
+                        Sau
+                      </Button>
+                    </HStack>
+                  )}
+                </>
+              )}
+            </VStack>
           )}
 
-          {Object.keys(report.flag_counts).length > 0 && (
-            <>
-              <VStack gap={1}>
-                <Text weight="bold">Cảnh báo (vẫn nạp, gắn cờ để xem lại sau)</Text>
-                {Object.entries(report.flag_counts).map(([flag, n]) => (
-                  <Text key={flag} type="supporting">
-                    {FLAG_LABELS[flag] ?? flag}: {n} lượt
-                  </Text>
-                ))}
-              </VStack>
-              <Divider />
-            </>
-          )}
-
-          {report.unmatched_cards.length > 0 && (
-            <>
-              <VStack gap={2}>
-                <Text weight="bold">
-                  {report.unmatched_cards.length} thẻ chưa khớp nhân viên — sẽ bị
-                  loại khỏi đợt nạp, phải gán thẻ rồi nạp lại file
-                </Text>
-                <Table
-                  data={unmatchedRows}
-                  columns={unmatchedColumns}
-                  idKey="card_id"
-                  density="balanced"
-                  verticalAlign="middle"
-                />
-                {unmatchedPageCount > 1 && (
-                  <HStack gap={3} align="center" justify="end">
-                    <Text type="supporting">Trang {unmatchedPage} / {unmatchedPageCount}</Text>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      label="Trang trước"
-                      isDisabled={unmatchedPage <= 1}
-                      onClick={() => setUnmatchedPage((p) => p - 1)}
-                    >
-                      Trước
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      label="Trang sau"
-                      isDisabled={unmatchedPage >= unmatchedPageCount}
-                      onClick={() => setUnmatchedPage((p) => p + 1)}
-                    >
-                      Sau
-                    </Button>
-                  </HStack>
-                )}
-              </VStack>
-              <Divider />
-            </>
-          )}
+          <Divider />
 
           <HStack gap={2} justify="end">
             <Button variant="ghost" label="Hủy" onClick={reset} isDisabled={importing}>
@@ -441,11 +456,6 @@ export default function AttendanceImport() {
               {importing ? 'Đang nạp...' : 'Xác nhận nạp'}
             </Button>
           </HStack>
-          {!allConfirmed && (
-            <Text type="supporting">
-              Hãy bật "Đã kiểm tra" cho tất cả các ngày trong file trước khi nạp.
-            </Text>
-          )}
         </VStack>
       )}
 
