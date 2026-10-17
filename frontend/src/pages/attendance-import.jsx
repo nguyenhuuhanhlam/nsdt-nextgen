@@ -4,6 +4,7 @@ import { Dialog } from '@astryxdesign/core/Dialog';
 import { Divider } from '@astryxdesign/core/Divider';
 import { Heading } from '@astryxdesign/core/Heading';
 import { HStack } from '@astryxdesign/core/HStack';
+import { IconButton } from '@astryxdesign/core/IconButton';
 import { Selector } from '@astryxdesign/core/Selector';
 import { Switch } from '@astryxdesign/core/Switch';
 import { Table, pixel, proportional } from '@astryxdesign/core/Table';
@@ -14,7 +15,7 @@ import { useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 
 import DialogTitle from '../components/dialog-title.jsx';
-import { PlusIcon } from '../components/icons.jsx';
+import { EyeIcon, PlusIcon } from '../components/icons.jsx';
 import { attendanceApi } from '../lib/api.js';
 import { formatDate } from '../lib/format.js';
 
@@ -163,7 +164,7 @@ export default function AttendanceImport() {
     {
       key: 'confirm',
       header: 'Đã kiểm tra',
-      width: pixel(250),
+      width: pixel(300),
       align: 'center',
       renderCell: (row) => (
         <Switch
@@ -308,17 +309,17 @@ export default function AttendanceImport() {
                       {
                         key: 'detail',
                         header: 'Chi tiết',
-                        width: pixel(120),
+                        width: pixel(80),
                         align: 'center',
                         renderCell: (r) => (
-                          <Button
-                            size="sm"
-                            variant="ghost"
+                          <IconButton
+                            icon={<EyeIcon />}
                             label={`Xem các lượt quẹt gần nhau của thẻ ${r.card_id}`}
+                            tooltip="Xem chi tiết"
+                            variant="ghost"
+                            size="sm"
                             onClick={() => setDedupDialog(r)}
-                          >
-                            Xem
-                          </Button>
+                          />
                         ),
                       },
                     ]}
