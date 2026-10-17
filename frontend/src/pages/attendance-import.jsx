@@ -4,6 +4,7 @@ import { Dialog } from '@astryxdesign/core/Dialog';
 import { Divider } from '@astryxdesign/core/Divider';
 import { Heading } from '@astryxdesign/core/Heading';
 import { HStack } from '@astryxdesign/core/HStack';
+import { Selector } from '@astryxdesign/core/Selector';
 import { Switch } from '@astryxdesign/core/Switch';
 import { Table, pixel, proportional } from '@astryxdesign/core/Table';
 import { Tab, TabList } from '@astryxdesign/core/TabList';
