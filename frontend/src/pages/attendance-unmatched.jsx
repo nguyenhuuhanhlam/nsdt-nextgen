@@ -3,6 +3,7 @@ import { Button } from '@astryxdesign/core/Button';
 import { Dialog } from '@astryxdesign/core/Dialog';
 import { Heading } from '@astryxdesign/core/Heading';
 import { HStack } from '@astryxdesign/core/HStack';
+import { Selector } from '@astryxdesign/core/Selector';
 import { Table, pixel, proportional } from '@astryxdesign/core/Table';
 import { Text } from '@astryxdesign/core/Text';
 import { TextInput } from '@astryxdesign/core/TextInput';
@@ -131,12 +132,15 @@ export default function AttendanceUnmatched() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [assignCard, setAssignCard] = useState(null);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
 
   const reload = useCallback(async () => {
     setLoading(true);
     try {
       const data = await attendanceApi.unmatched();
       setGroups(data);
+      setPage(1);
       setError('');
     } catch (e) {
       setError(e.message);
@@ -204,11 +208,33 @@ export default function AttendanceUnmatched() {
     })),
   );
 
+  const pageCount = Math.max(1, Math.ceil(rows.length / pageSize));
+  const pagedRows = rows.slice((page - 1) * pageSize, page * pageSize);
+
+  const changePageSize = (v) => {
+    setPageSize(Number(v));
+    setPage(1);
+  };
+
   return (
     <VStack gap={4}>
-      <Heading level={4} weight="bold">
-        Thẻ chưa khớp nhân viên
-      </Heading>
+      <HStack justify="between" align="center" width="100%">
+        <Heading level={4} weight="bold">
+          Thẻ chưa khớp nhân viên
+        </Heading>
+        <Selector
+          label="Số dòng mỗi bảng"
+          isLabelHidden
+          value={String(pageSize)}
+          onChange={changePageSize}
+          options={[
+            { value: '25', label: '25 dòng/bảng' },
+            { value: '50', label: '50 dòng/bảng' },
+            { value: '100', label: '100 dòng/bảng' },
+          ]}
+          width={150}
+        />
+      </HStack>
 
       {error ? <Text>{error}</Text> : null}
 
@@ -224,13 +250,36 @@ export default function AttendanceUnmatched() {
             để hoàn tất.
           </Text>
           <Table
-            data={rows}
+            data={pagedRows}
             columns={columns}
             idKey="id"
             density="balanced"
             verticalAlign="middle"
             hasHover
           />
+          {pageCount > 1 && (
+            <HStack gap={3} align="center" justify="end">
+              <Text type="supporting">Trang {page} / {pageCount}</Text>
+              <Button
+                size="sm"
+                variant="ghost"
+                label="Trang trước"
+                isDisabled={page <= 1}
+                onClick={() => setPage((p) => p - 1)}
+              >
+                Trước
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                label="Trang sau"
+                isDisabled={page >= pageCount}
+                onClick={() => setPage((p) => p + 1)}
+              >
+                Sau
+              </Button>
+            </HStack>
+          )}
         </VStack>
       )}
 
