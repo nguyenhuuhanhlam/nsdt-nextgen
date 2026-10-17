@@ -109,8 +109,8 @@ export default function AttendanceImport() {
   const toggleDate = (iso) =>
     setConfirmed((c) => (c.includes(iso) ? c.filter((d) => d !== iso) : [...c, iso]));
 
-  // Thẻ chưa khớp: phân trang phía client, 100 dòng/trang
-  const UNMATCHED_PAGE_SIZE = 100;
+  // Thẻ chưa khớp: phân trang phía client, 25 dòng/trang
+  const UNMATCHED_PAGE_SIZE = 25;
   const unmatchedTotal = report?.unmatched_cards.length ?? 0;
   const unmatchedPageCount = Math.max(1, Math.ceil(unmatchedTotal / UNMATCHED_PAGE_SIZE));
   const unmatchedRows = (report?.unmatched_cards ?? []).slice(
