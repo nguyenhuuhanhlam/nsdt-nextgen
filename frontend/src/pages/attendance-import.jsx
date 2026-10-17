@@ -1,5 +1,6 @@
 // Nạp file chấm công — luồng 3 bước: chọn file -> báo cáo kiểm tra -> xác nhận nạp.
 import { Button } from '@astryxdesign/core/Button';
+import { Divider } from '@astryxdesign/core/Divider';
 import { Heading } from '@astryxdesign/core/Heading';
 import { HStack } from '@astryxdesign/core/HStack';
 import { Switch } from '@astryxdesign/core/Switch';
@@ -45,6 +46,7 @@ export default function AttendanceImport() {
   const [importing, setImporting] = useState(false);
   const [error, setError] = useState('');
   const [result, setResult] = useState(null);
+  const [unmatchedPage, setUnmatchedPage] = useState(1);
   const fileRef = useRef(null);
 
   const pickFile = () => fileRef.current?.click();
@@ -62,6 +64,7 @@ export default function AttendanceImport() {
       setConfirmed([]);
       setReplaceExisting(false);
       setShowErrors(false);
+      setUnmatchedPage(1);
     } catch (err) {
       setError(err.message);
       setReport(null);
@@ -106,6 +109,15 @@ export default function AttendanceImport() {
   const toggleDate = (iso) =>
     setConfirmed((c) => (c.includes(iso) ? c.filter((d) => d !== iso) : [...c, iso]));
 
+  // Thẻ chưa khớp: phân trang phía client, 100 dòng/trang
+  const UNMATCHED_PAGE_SIZE = 100;
+  const unmatchedTotal = report?.unmatched_cards.length ?? 0;
+  const unmatchedPageCount = Math.max(1, Math.ceil(unmatchedTotal / UNMATCHED_PAGE_SIZE));
+  const unmatchedRows = (report?.unmatched_cards ?? []).slice(
+    (unmatchedPage - 1) * UNMATCHED_PAGE_SIZE,
+    unmatchedPage * UNMATCHED_PAGE_SIZE,
+  );
+
   const dateColumns = [
     {
       key: 'date',
@@ -123,7 +135,7 @@ export default function AttendanceImport() {
     {
       key: 'confirm',
       header: 'Đã kiểm tra',
-      width: pixel(160),
+      width: pixel(250),
       align: 'center',
       renderCell: (row) => (
         <Switch
@@ -202,16 +214,19 @@ export default function AttendanceImport() {
           </HStack>
 
           {report.already_imported && (
-            <VStack gap={2}>
-              <Text weight="bold">
-                File này đã được nạp trước đó. Mặc định sẽ bỏ qua.
-              </Text>
-              <Switch
-                label="Nạp lại thay thế đợt cũ"
-                value={replaceExisting}
-                onChange={setReplaceExisting}
-              />
-            </VStack>
+            <>
+              <VStack gap={2}>
+                <Text weight="bold">
+                  File này đã được nạp trước đó. Mặc định sẽ bỏ qua.
+                </Text>
+                <Switch
+                  label="Nạp lại thay thế đợt cũ"
+                  value={replaceExisting}
+                  onChange={setReplaceExisting}
+                />
+              </VStack>
+              <Divider />
+            </>
           )}
 
           <VStack gap={2}>
@@ -227,72 +242,106 @@ export default function AttendanceImport() {
             />
           </VStack>
 
+          <Divider />
+
           {report.error_rows > 0 && (
-            <VStack gap={2}>
-              <HStack gap={3} align="center">
-                <Text weight="bold">
-                  {report.error_rows} dòng lỗi (bị loại khỏi đợt nạp)
-                </Text>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  label={showErrors ? 'Ẩn chi tiết lỗi' : 'Xem chi tiết lỗi'}
-                  onClick={() => setShowErrors((s) => !s)}
-                >
-                  {showErrors ? 'Ẩn' : 'Xem'}
-                </Button>
-              </HStack>
-              {Object.entries(report.error_counts).map(([code, n]) => (
-                <Text key={code} type="supporting">
-                  {code} — {ERROR_LABELS[code] ?? code}: {n} dòng
-                </Text>
-              ))}
-              {showErrors && (
-                <Table
-                  data={report.error_samples}
-                  columns={[
-                    { key: 'line', header: 'Dòng', width: pixel(80), renderCell: (r) => r.line_no },
-                    { key: 'code', header: 'Mã', width: pixel(70), renderCell: (r) => r.code },
-                    {
-                      key: 'msg',
-                      header: 'Lý do',
-                      width: proportional(1),
-                      renderCell: (r) => r.message,
-                    },
-                  ]}
-                  idKey="line_no"
-                  density="balanced"
-                  verticalAlign="middle"
-                />
-              )}
-            </VStack>
+            <>
+              <VStack gap={2}>
+                <HStack gap={3} align="center">
+                  <Text weight="bold">
+                    {report.error_rows} dòng lỗi (bị loại khỏi đợt nạp)
+                  </Text>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    label={showErrors ? 'Ẩn chi tiết lỗi' : 'Xem chi tiết lỗi'}
+                    onClick={() => setShowErrors((s) => !s)}
+                  >
+                    {showErrors ? 'Ẩn' : 'Xem'}
+                  </Button>
+                </HStack>
+                {Object.entries(report.error_counts).map(([code, n]) => (
+                  <Text key={code} type="supporting">
+                    {code} — {ERROR_LABELS[code] ?? code}: {n} dòng
+                  </Text>
+                ))}
+                {showErrors && (
+                  <Table
+                    data={report.error_samples}
+                    columns={[
+                      { key: 'line', header: 'Dòng', width: pixel(80), renderCell: (r) => r.line_no },
+                      { key: 'code', header: 'Mã', width: pixel(70), renderCell: (r) => r.code },
+                      {
+                        key: 'msg',
+                        header: 'Lý do',
+                        width: proportional(1),
+                        renderCell: (r) => r.message,
+                      },
+                    ]}
+                    idKey="line_no"
+                    density="balanced"
+                    verticalAlign="middle"
+                  />
+                )}
+              </VStack>
+              <Divider />
+            </>
           )}
 
           {Object.keys(report.flag_counts).length > 0 && (
-            <VStack gap={1}>
-              <Text weight="bold">Cảnh báo (vẫn nạp, gắn cờ để xem lại sau)</Text>
-              {Object.entries(report.flag_counts).map(([flag, n]) => (
-                <Text key={flag} type="supporting">
-                  {FLAG_LABELS[flag] ?? flag}: {n} lượt
-                </Text>
-              ))}
-            </VStack>
+            <>
+              <VStack gap={1}>
+                <Text weight="bold">Cảnh báo (vẫn nạp, gắn cờ để xem lại sau)</Text>
+                {Object.entries(report.flag_counts).map(([flag, n]) => (
+                  <Text key={flag} type="supporting">
+                    {FLAG_LABELS[flag] ?? flag}: {n} lượt
+                  </Text>
+                ))}
+              </VStack>
+              <Divider />
+            </>
           )}
 
           {report.unmatched_cards.length > 0 && (
-            <VStack gap={2}>
-              <Text weight="bold">
-                {report.unmatched_cards.length} thẻ chưa khớp nhân viên — sẽ bị
-                loại khỏi đợt nạp, phải gán thẻ rồi nạp lại file
-              </Text>
-              <Table
-                data={report.unmatched_cards}
-                columns={unmatchedColumns}
-                idKey="card_id"
-                density="balanced"
-                verticalAlign="middle"
-              />
-            </VStack>
+            <>
+              <VStack gap={2}>
+                <Text weight="bold">
+                  {report.unmatched_cards.length} thẻ chưa khớp nhân viên — sẽ bị
+                  loại khỏi đợt nạp, phải gán thẻ rồi nạp lại file
+                </Text>
+                <Table
+                  data={unmatchedRows}
+                  columns={unmatchedColumns}
+                  idKey="card_id"
+                  density="balanced"
+                  verticalAlign="middle"
+                />
+                {unmatchedPageCount > 1 && (
+                  <HStack gap={3} align="center" justify="end">
+                    <Text type="supporting">Trang {unmatchedPage} / {unmatchedPageCount}</Text>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      label="Trang trước"
+                      isDisabled={unmatchedPage <= 1}
+                      onClick={() => setUnmatchedPage((p) => p - 1)}
+                    >
+                      Trước
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      label="Trang sau"
+                      isDisabled={unmatchedPage >= unmatchedPageCount}
+                      onClick={() => setUnmatchedPage((p) => p + 1)}
+                    >
+                      Sau
+                    </Button>
+                  </HStack>
+                )}
+              </VStack>
+              <Divider />
+            </>
           )}
 
           <HStack gap={2} justify="end">
