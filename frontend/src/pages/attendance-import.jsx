@@ -1,5 +1,6 @@
 // Nạp file chấm công — luồng 3 bước: chọn file -> báo cáo kiểm tra -> xác nhận nạp.
 import { Button } from '@astryxdesign/core/Button';
+import { Dialog } from '@astryxdesign/core/Dialog';
 import { Divider } from '@astryxdesign/core/Divider';
 import { Heading } from '@astryxdesign/core/Heading';
 import { HStack } from '@astryxdesign/core/HStack';
@@ -11,6 +12,7 @@ import { VStack } from '@astryxdesign/core/VStack';
 import { useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 
+import DialogTitle from '../components/dialog-title.jsx';
 import { PlusIcon } from '../components/icons.jsx';
 import { attendanceApi } from '../lib/api.js';
 import { formatDate } from '../lib/format.js';
@@ -43,7 +45,7 @@ export default function AttendanceImport() {
   const [confirmed, setConfirmed] = useState([]);
   const [replaceExisting, setReplaceExisting] = useState(false);
   const [showErrors, setShowErrors] = useState(false);
-  const [expandedDedupCard, setExpandedDedupCard] = useState(null);
+  const [dedupDialog, setDedupDialog] = useState(null); // group dedup đang xem chi tiết
   const [reportTab, setReportTab] = useState('overview');
   const [parsing, setParsing] = useState(false);
   const [importing, setImporting] = useState(false);
@@ -69,7 +71,7 @@ export default function AttendanceImport() {
       setConfirmed([]);
       setReplaceExisting(false);
       setShowErrors(false);
-      setExpandedDedupCard(null);
+      setDedupDialog(null);
       setReportTab('overview');
       setUnmatchedPage(1);
       setDedupPage(1);
@@ -311,10 +313,10 @@ export default function AttendanceImport() {
                           <Button
                             size="sm"
                             variant="ghost"
-                            label={expandedDedupCard === r.card_id ? `Ẩn chi tiết thẻ ${r.card_id}` : `Xem chi tiết thẻ ${r.card_id}`}
-                            onClick={() => setExpandedDedupCard((c) => (c === r.card_id ? null : r.card_id))}
+                            label={`Xem các lượt quẹt gần nhau của thẻ ${r.card_id}`}
+                            onClick={() => setDedupDialog(r)}
                           >
-                            {expandedDedupCard === r.card_id ? 'Ẩn' : 'Xem'}
+                            Xem
                           </Button>
                         ),
                       },
@@ -347,33 +349,6 @@ export default function AttendanceImport() {
                       </Button>
                     </HStack>
                   )}
-                  {(() => {
-                    const g = report.dedup_by_card.find((x) => x.card_id === expandedDedupCard);
-                    if (!g) return null;
-                    const shownDropped = g.lines.filter((l) => !l.kept).length;
-                    return (
-                      <VStack gap={1}>
-                        <Text weight="bold">
-                          Thẻ {g.card_id}: các lượt quẹt gần nhau theo thứ tự giờ
-                        </Text>
-                        {g.lines.map((l) => (
-                          <Text
-                            key={l.line_no}
-                            color={l.kept ? 'accent' : undefined}
-                            weight={l.kept ? 'bold' : undefined}
-                          >
-                            Dòng {l.line_no} — {l.tap_datetime}
-                            {l.kept ? ' (giữ lại)' : ''}
-                          </Text>
-                        ))}
-                        {shownDropped < g.merged_count && (
-                          <Text type="supporting">
-                            Hiện một phần ({shownDropped}/{g.merged_count} lượt bị gộp).
-                          </Text>
-                        )}
-                      </VStack>
-                    );
-                  })()}
                 </VStack>
               )}
 
@@ -538,6 +513,50 @@ export default function AttendanceImport() {
           </HStack>
         </VStack>
       )}
+
+      {dedupDialog && (() => {
+        const shownDropped = dedupDialog.lines.filter((l) => !l.kept).length;
+        return (
+          <Dialog
+            isOpen
+            onOpenChange={(open) => !open && setDedupDialog(null)}
+            width={560}
+            maxHeight="85dvh"
+          >
+            <DialogTitle onClose={() => setDedupDialog(null)}>
+              Thẻ {dedupDialog.card_id}: các lượt quẹt gần nhau
+            </DialogTitle>
+            <VStack gap={2} padding={4}>
+              <Text type="supporting">
+                {dedupDialog.merged_count} lượt bị gộp — dòng được giữ lại tô màu
+                nổi bật.
+              </Text>
+              <VStack gap={1}>
+                {dedupDialog.lines.map((l) => (
+                  <Text
+                    key={l.line_no}
+                    color={l.kept ? 'accent' : undefined}
+                    weight={l.kept ? 'bold' : undefined}
+                  >
+                    Dòng {l.line_no} — {l.tap_datetime}
+                    {l.kept ? ' (giữ lại)' : ''}
+                  </Text>
+                ))}
+              </VStack>
+              {shownDropped < dedupDialog.merged_count && (
+                <Text type="supporting">
+                  Hiện một phần ({shownDropped}/{dedupDialog.merged_count} lượt bị gộp).
+                </Text>
+              )}
+            </VStack>
+            <HStack gap={2} justify="end" padding={4}>
+              <Button variant="ghost" label="Đóng" onClick={() => setDedupDialog(null)}>
+                Đóng
+              </Button>
+            </HStack>
+          </Dialog>
+        );
+      })()}
     </VStack>
   );
 }
