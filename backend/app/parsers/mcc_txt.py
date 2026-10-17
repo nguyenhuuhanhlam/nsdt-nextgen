@@ -83,6 +83,8 @@ class ParseResult:
     valid_rows: list[TapRow] = field(default_factory=list)  # đã gộp trùng W1
     errors: list[RowError] = field(default_factory=list)
     deduped_count: int = 0
+    # W1 chi tiết: card_id -> số lượt đã gộp trùng (phản ánh máy đọc thẻ có vấn đề)
+    deduped_per_card: dict[int, int] = field(default_factory=dict)
     # flags: index trong valid_rows -> ["single_tap", "excess_taps", "odd_hours"]
     flags: dict[int, list[str]] = field(default_factory=dict)
 
@@ -118,6 +120,7 @@ class ParseResult:
             "valid_rows": [r.to_dict() for r in self.valid_rows],
             "errors": [e.to_dict() for e in self.errors],
             "deduped_count": self.deduped_count,
+            "deduped_per_card": {str(k): v for k, v in self.deduped_per_card.items()},
             "flags": {str(k): v for k, v in self.flags.items()},
         }
 
@@ -130,6 +133,7 @@ class ParseResult:
             valid_rows=[TapRow.from_dict(r) for r in d["valid_rows"]],
             errors=[RowError(**e) for e in d["errors"]],
             deduped_count=d["deduped_count"],
+            deduped_per_card={int(k): v for k, v in d.get("deduped_per_card", {}).items()},
             flags={int(k): v for k, v in d["flags"].items()},
         )
 
@@ -219,6 +223,8 @@ def parse_mcc_txt(content: bytes, filename: str) -> ParseResult:
                 and (r.tap_datetime - deduped[-1].tap_datetime).total_seconds()
                 <= DEDUP_WINDOW_SECONDS):
             result.deduped_count += 1
+            result.deduped_per_card[r.card_id] = \
+                result.deduped_per_card.get(r.card_id, 0) + 1
             continue
         deduped.append(r)
     result.valid_rows = deduped

@@ -20,7 +20,10 @@ class DateBreakdown(BaseModel):
 class UnmatchedCardRead(BaseModel):
     card_id: int
     taps: int
+    deduped: int = 0  # số lượt đã gộp trùng (W1) — phản ánh máy đọc thẻ có vấn đề
     dates: list[date]
+    # ngày ISO -> các giờ quẹt trong ngày (sau gộp trùng)
+    times: dict[str, list[str]] = Field(default_factory=dict)
 
 
 class ParseReport(BaseModel):

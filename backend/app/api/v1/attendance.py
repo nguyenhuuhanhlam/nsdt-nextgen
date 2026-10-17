@@ -79,17 +79,27 @@ def _card_employee_map(db: Session, card_ids: set[int]) -> dict[int, int]:
     return mapping
 
 
-def _unmatched_cards(valid_rows: list[TapRow], emp_map: dict[int, int]):
-    """Nhóm các dòng có thẻ chưa khớp NV: [{card_id, taps, dates}]."""
+def _unmatched_cards(valid_rows: list[TapRow], emp_map: dict[int, int],
+                      deduped_per_card: dict[int, int]):
+    """Nhóm các dòng có thẻ chưa khớp NV: [{card_id, taps, deduped, dates, times}]."""
     groups: dict[int, dict] = {}
     for r in valid_rows:
         if r.card_id in emp_map:
             continue
-        g = groups.setdefault(r.card_id, {"taps": 0, "dates": set()})
+        g = groups.setdefault(r.card_id, {"taps": 0, "dates": set(), "times": {}})
         g["taps"] += 1
-        g["dates"].add(r.tap_date.isoformat())
+        date_iso = r.tap_date.isoformat()
+        g["dates"].add(date_iso)
+        # valid_rows đã sort theo (card, datetime) nên giờ trong ngày tăng dần
+        g["times"].setdefault(date_iso, []).append(r.tap_time.strftime("%H:%M:%S"))
     return [
-        {"card_id": cid, "taps": g["taps"], "dates": sorted(g["dates"])}
+        {
+            "card_id": cid,
+            "taps": g["taps"],
+            "deduped": deduped_per_card.get(cid, 0),
+            "dates": sorted(g["dates"]),
+            "times": {d: g["times"][d] for d in sorted(g["times"])},
+        }
         for cid, g in sorted(groups.items())
     ]
 
@@ -99,7 +109,7 @@ def _build_report(
 ) -> ParseReport:
     card_ids = {r.card_id for r in parsed.valid_rows}
     emp_map = _card_employee_map(db, card_ids)
-    unmatched = _unmatched_cards(parsed.valid_rows, emp_map)
+    unmatched = _unmatched_cards(parsed.valid_rows, emp_map, parsed.deduped_per_card)
     unmatched_set = {u["card_id"] for u in unmatched}
 
     existing = db.scalar(
@@ -211,7 +221,9 @@ def _do_import(
     inserted = _insert_new_taps(db, file_row.id, to_insert)
 
     unmatched = _unmatched_cards(
-        [r for r in parsed.valid_rows if r.tap_date in confirmed_dates], emp_map
+        [r for r in parsed.valid_rows if r.tap_date in confirmed_dates],
+        emp_map,
+        parsed.deduped_per_card,
     )
     file_row.imported_rows = (file_row.imported_rows or 0) + inserted
     file_row.unmatched_cards = unmatched

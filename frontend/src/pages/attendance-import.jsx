@@ -151,21 +151,36 @@ export default function AttendanceImport() {
     {
       key: 'card',
       header: 'Mã thẻ',
-      width: proportional(1),
+      width: pixel(140),
       renderCell: (row) => row.card_id,
     },
     {
       key: 'taps',
-      header: 'Số lượt quẹt',
-      width: pixel(140),
+      header: 'Lượt quẹt',
+      width: pixel(100),
       align: 'center',
       renderCell: (row) => row.taps,
     },
     {
-      key: 'dates',
-      header: 'Ngày',
-      width: proportional(1),
-      renderCell: (row) => row.dates.map(formatDate).join(', '),
+      key: 'deduped',
+      header: 'Gộp trùng',
+      width: pixel(100),
+      align: 'center',
+      renderCell: (row) => (row.deduped > 0 ? row.deduped : '—'),
+    },
+    {
+      key: 'times',
+      header: 'Thời gian quẹt',
+      width: proportional(2),
+      renderCell: (row) => (
+        <VStack gap={1}>
+          {Object.entries(row.times ?? {}).map(([d, times]) => (
+            <Text key={d} type="supporting">
+              {formatDate(d)}: {times.join(', ')}
+            </Text>
+          ))}
+        </VStack>
+      ),
     },
   ];
 
