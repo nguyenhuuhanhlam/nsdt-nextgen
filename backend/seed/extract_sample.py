@@ -1,4 +1,4 @@
-"""Trích xuất dữ liệu mẫu từ database hệ cũ (MySQL 5.1) -> seed/sample_data.json.
+"""Trích xuất dữ liệu từ database hệ cũ (MySQL 5.1) -> seed/sample_data.json.
 
 CHỈ ĐỌC (SELECT), không ghi gì lên server cũ.
 
@@ -47,14 +47,16 @@ catalogs = {
     'contract_types': rows("SELECT id_hdld AS old_id, loaihopdong AS name FROM ns_hdld ORDER BY id_hdld"),
 }
 
-emps = rows("""(SELECT ma_nhanvien, ma_the, gioitinh, ngaysinh, id_donvi, id_chucvu, id_congviec,
+emps = rows("""SELECT ma_nhanvien, ma_the, gioitinh, ngaysinh, id_donvi, id_chucvu, id_congviec,
     ngayvaolam, ngayhetthuviec, hesoluong, ngay_nghiviec
-    FROM ns_nhansu WHERE ngay_nghiviec IS NULL ORDER BY RAND() LIMIT 240)
-    UNION ALL
-    (SELECT ma_nhanvien, ma_the, gioitinh, ngaysinh, id_donvi, id_chucvu, id_congviec,
-    ngayvaolam, ngayhetthuviec, hesoluong, ngay_nghiviec
-    FROM ns_nhansu WHERE ngay_nghiviec IS NOT NULL ORDER BY RAND() LIMIT 60)""")
-print("sampled employees:", len(emps))
+    FROM ns_nhansu ORDER BY ma_nhanvien""")
+print("employees (toàn bộ):", len(emps))
+
+# Thống kê chất lượng mã thẻ
+null_cards = sum(1 for e in emps if not e['ma_the'])
+from collections import Counter
+dup_cards = sum(1 for c, n in Counter(e['ma_the'] for e in emps if e['ma_the']).items() if n > 1)
+print(f"mã thẻ trống: {null_cards}, mã thẻ trùng nhau ở nhiều NV: {dup_cards}")
 
 codes = [e['ma_nhanvien'] for e in emps]
 ph = ",".join(["%s"] * len(codes))
@@ -105,8 +107,9 @@ data = {**catalogs,
         for m in mat_leaves
     ],
     "_meta": {
-        "note": "Dữ liệu mẫu đã ẨN DANH HÓA: họ tên là dữ liệu giả theo phân bố thực tế (seed 20261015); không gồm CMND/địa chỉ; ngày zero kiểu '1985-00-00' -> null.",
-        "source": "ns_nhansu (mẫu ngẫu nhiên 300/1027: 240 đang làm + 60 đã nghỉ)",
+        "note": "Dữ liệu đã ẨN DANH HÓA: họ tên là dữ liệu giả theo giới tính (seed 20261015); không gồm CMND/địa chỉ; ngày zero kiểu '1985-00-00' -> null. Các trường nghiệp vụ (mã NV, mã thẻ, đơn vị, chức vụ...) giữ nguyên.",
+        "source": "ns_nhansu (toàn bộ tại thời điểm trích xuất)",
+        "employee_count": len(out_emps),
     },
 }
 p = "/home/hatch/workspace/nsdt-nextgen/backend/seed/sample_data.json"

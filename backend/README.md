@@ -37,8 +37,8 @@ python -c "from app.db.base import Base; from app.db.session import engine; impo
 
 ## Nạp dữ liệu mẫu (seed)
 
-`seed/sample_data.json` chứa ~300 hồ sơ nhân viên + danh mục liên quan trích từ
-hệ cũ, **đã ẩn danh hóa** (tên là dữ liệu giả theo phân bố thực tế, không gồm
+`seed/sample_data.json` chứa toàn bộ hồ sơ nhân viên (~1027) + danh mục liên quan trích từ
+hệ cũ, **đã ẩn danh hóa** (tên là dữ liệu giả theo giới tính, không gồm
 CMND/địa chỉ) — an toàn để commit. Nạp vào DB phát triển:
 
 ```bash
