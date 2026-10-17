@@ -26,6 +26,16 @@ class UnmatchedCardRead(BaseModel):
     times: dict[str, list[str]] = Field(default_factory=dict)
 
 
+class DedupDetailRead(BaseModel):
+    """Một lượt quẹt bị gộp trùng: dòng nào, thẻ nào, gộp vào dòng nào."""
+
+    line_no: int
+    card_id: int
+    tap_datetime: str
+    kept_line_no: int
+    kept_datetime: str
+
+
 class ParseReport(BaseModel):
     """Báo cáo kiểm tra file — bước 2 của luồng nạp, chưa ghi DB."""
 
@@ -39,6 +49,7 @@ class ParseReport(BaseModel):
     error_samples: list[RowErrorRead] = Field(default_factory=list)
     dates: list[DateBreakdown] = Field(default_factory=list)
     deduped_count: int = 0
+    dedup_samples: list[DedupDetailRead] = Field(default_factory=list)
     unmatched_cards: list[UnmatchedCardRead] = Field(default_factory=list)
     flag_counts: dict[str, int] = Field(default_factory=dict)
     importable_rows: int = 0

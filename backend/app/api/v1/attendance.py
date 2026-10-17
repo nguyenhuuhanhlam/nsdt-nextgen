@@ -30,6 +30,7 @@ from app.schemas.attendance import (
     AssignCardRequest,
     AttendanceFileRead,
     DateBreakdown,
+    DedupDetailRead,
     ImportRequest,
     ImportResult,
     PaginatedFiles,
@@ -54,6 +55,7 @@ UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 MAX_FILE_SIZE = 20 * 1024 * 1024  # 20MB
 INSERT_CHUNK = 1000
 ERROR_SAMPLES = 20  # số dòng lỗi mẫu trong báo cáo
+DEDUP_SAMPLES = 50  # số lượt gộp trùng mẫu trong báo cáo
 
 
 def _parsed_path(upload_id: str) -> Path:
@@ -132,6 +134,16 @@ def _build_report(
             for d, n in parsed.dates.items()
         ],
         deduped_count=parsed.deduped_count,
+        dedup_samples=[
+            DedupDetailRead(
+                line_no=d.line_no,
+                card_id=d.card_id,
+                tap_datetime=d.tap_datetime.strftime("%d-%m-%Y %H:%M:%S"),
+                kept_line_no=d.kept_line_no,
+                kept_datetime=d.kept_datetime.strftime("%d-%m-%Y %H:%M:%S"),
+            )
+            for d in parsed.dedup_details[:DEDUP_SAMPLES]
+        ],
         unmatched_cards=[UnmatchedCardRead(**u) for u in unmatched],
         flag_counts=parsed.flag_counts,
         importable_rows=sum(1 for r in parsed.valid_rows if r.card_id not in unmatched_set),

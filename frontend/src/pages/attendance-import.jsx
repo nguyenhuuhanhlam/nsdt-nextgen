@@ -42,6 +42,7 @@ export default function AttendanceImport() {
   const [confirmed, setConfirmed] = useState([]);
   const [replaceExisting, setReplaceExisting] = useState(false);
   const [showErrors, setShowErrors] = useState(false);
+  const [showDedup, setShowDedup] = useState(false);
   const [parsing, setParsing] = useState(false);
   const [importing, setImporting] = useState(false);
   const [error, setError] = useState('');
@@ -64,6 +65,7 @@ export default function AttendanceImport() {
       setConfirmed([]);
       setReplaceExisting(false);
       setShowErrors(false);
+      setShowDedup(false);
       setUnmatchedPage(1);
     } catch (err) {
       setError(err.message);
@@ -227,6 +229,42 @@ export default function AttendanceImport() {
             <Stat label="Đã gộp trùng" value={report.deduped_count} />
             <Stat label="Nạp được" value={report.importable_rows} />
           </HStack>
+
+          {report.deduped_count > 0 && (
+            <>
+              <VStack gap={2}>
+                <HStack gap={3} align="center">
+                  <Text weight="bold">
+                    {report.deduped_count} lượt trùng đã gộp (giữ lại lượt quẹt đầu tiên)
+                  </Text>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    label={showDedup ? 'Ẩn chi tiết gộp trùng' : 'Xem chi tiết gộp trùng'}
+                    onClick={() => setShowDedup((s) => !s)}
+                  >
+                    {showDedup ? 'Ẩn' : 'Xem'}
+                  </Button>
+                </HStack>
+                {showDedup && (
+                  <Table
+                    data={report.dedup_samples}
+                    columns={[
+                      { key: 'line', header: 'Dòng bị gộp', width: pixel(110), align: 'center', renderCell: (r) => r.line_no },
+                      { key: 'card', header: 'Mã thẻ', width: pixel(150), renderCell: (r) => r.card_id },
+                      { key: 'time', header: 'Giờ quẹt', width: pixel(170), renderCell: (r) => r.tap_datetime },
+                      { key: 'kept', header: 'Gộp vào dòng', width: pixel(110), align: 'center', renderCell: (r) => r.kept_line_no },
+                      { key: 'kepttime', header: 'Giờ được giữ', width: pixel(170), renderCell: (r) => r.kept_datetime },
+                    ]}
+                    idKey="line_no"
+                    density="balanced"
+                    verticalAlign="middle"
+                  />
+                )}
+              </VStack>
+              <Divider />
+            </>
+          )}
 
           {report.already_imported && (
             <>

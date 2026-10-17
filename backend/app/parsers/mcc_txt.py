@@ -76,6 +76,35 @@ class RowError:
 
 
 @dataclass
+class DedupDetail:
+    """Một lượt quẹt bị gộp trùng (W1): dòng nào, thẻ nào, gộp vào đâu."""
+    line_no: int        # dòng bị loại
+    card_id: int
+    tap_datetime: datetime
+    kept_line_no: int   # dòng được giữ lại
+    kept_datetime: datetime
+
+    def to_dict(self) -> dict:
+        return {
+            "line_no": self.line_no,
+            "card_id": self.card_id,
+            "tap_datetime": self.tap_datetime.isoformat(),
+            "kept_line_no": self.kept_line_no,
+            "kept_datetime": self.kept_datetime.isoformat(),
+        }
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "DedupDetail":
+        return cls(
+            line_no=d["line_no"],
+            card_id=d["card_id"],
+            tap_datetime=datetime.fromisoformat(d["tap_datetime"]),
+            kept_line_no=d["kept_line_no"],
+            kept_datetime=datetime.fromisoformat(d["kept_datetime"]),
+        )
+
+
+@dataclass
 class ParseResult:
     filename: str
     file_hash: str
@@ -85,6 +114,8 @@ class ParseResult:
     deduped_count: int = 0
     # W1 chi tiết: card_id -> số lượt đã gộp trùng (phản ánh máy đọc thẻ có vấn đề)
     deduped_per_card: dict[int, int] = field(default_factory=dict)
+    # W1 chi tiết từng lượt bị gộp: dòng nào, thẻ nào, gộp vào dòng nào
+    dedup_details: list[DedupDetail] = field(default_factory=list)
     # flags: index trong valid_rows -> ["single_tap", "excess_taps", "odd_hours"]
     flags: dict[int, list[str]] = field(default_factory=dict)
 
@@ -121,6 +152,7 @@ class ParseResult:
             "errors": [e.to_dict() for e in self.errors],
             "deduped_count": self.deduped_count,
             "deduped_per_card": {str(k): v for k, v in self.deduped_per_card.items()},
+            "dedup_details": [d.to_dict() for d in self.dedup_details],
             "flags": {str(k): v for k, v in self.flags.items()},
         }
 
@@ -134,6 +166,7 @@ class ParseResult:
             errors=[RowError(**e) for e in d["errors"]],
             deduped_count=d["deduped_count"],
             deduped_per_card={int(k): v for k, v in d.get("deduped_per_card", {}).items()},
+            dedup_details=[DedupDetail.from_dict(x) for x in d.get("dedup_details", [])],
             flags={int(k): v for k, v in d["flags"].items()},
         )
 
@@ -225,6 +258,13 @@ def parse_mcc_txt(content: bytes, filename: str) -> ParseResult:
             result.deduped_count += 1
             result.deduped_per_card[r.card_id] = \
                 result.deduped_per_card.get(r.card_id, 0) + 1
+            result.dedup_details.append(DedupDetail(
+                line_no=r.line_no,
+                card_id=r.card_id,
+                tap_datetime=r.tap_datetime,
+                kept_line_no=deduped[-1].line_no,
+                kept_datetime=deduped[-1].tap_datetime,
+            ))
             continue
         deduped.append(r)
     result.valid_rows = deduped
