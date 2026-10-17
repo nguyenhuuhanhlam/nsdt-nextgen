@@ -30,6 +30,7 @@ from app.schemas.attendance import (
     AssignCardRequest,
     AttendanceFileRead,
     DateBreakdown,
+    DedupCardGroup,
     DedupDetailRead,
     ImportRequest,
     ImportResult,
@@ -55,7 +56,7 @@ UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 MAX_FILE_SIZE = 20 * 1024 * 1024  # 20MB
 INSERT_CHUNK = 1000
 ERROR_SAMPLES = 20  # số dòng lỗi mẫu trong báo cáo
-DEDUP_SAMPLES = 50  # số lượt gộp trùng mẫu trong báo cáo
+DEDUP_GROUP_SAMPLES = 10  # số lượt mẫu tối đa cho mỗi thẻ trong nhóm gộp trùng
 
 
 def _parsed_path(upload_id: str) -> Path:
@@ -106,6 +107,31 @@ def _unmatched_cards(valid_rows: list[TapRow], emp_map: dict[int, int],
     ]
 
 
+def _dedup_by_card(parsed) -> list[DedupCardGroup]:
+    """Nhóm các lượt bị gộp trùng theo mã thẻ, nhiều nhất lên trước."""
+    groups: dict[int, dict] = {}
+    for d in parsed.dedup_details:
+        g = groups.setdefault(d.card_id, {"merged_count": 0, "samples": []})
+        g["merged_count"] += 1
+        if len(g["samples"]) < DEDUP_GROUP_SAMPLES:
+            g["samples"].append(
+                DedupDetailRead(
+                    line_no=d.line_no,
+                    card_id=d.card_id,
+                    tap_datetime=d.tap_datetime.strftime("%d-%m-%Y %H:%M:%S"),
+                    kept_line_no=d.kept_line_no,
+                    kept_datetime=d.kept_datetime.strftime("%d-%m-%Y %H:%M:%S"),
+                )
+            )
+    return sorted(
+        (
+            DedupCardGroup(card_id=cid, merged_count=g["merged_count"], samples=g["samples"])
+            for cid, g in groups.items()
+        ),
+        key=lambda x: -x.merged_count,
+    )
+
+
 def _build_report(
     db: Session, upload_id: str, filename: str, parsed
 ) -> ParseReport:
@@ -134,16 +160,7 @@ def _build_report(
             for d, n in parsed.dates.items()
         ],
         deduped_count=parsed.deduped_count,
-        dedup_samples=[
-            DedupDetailRead(
-                line_no=d.line_no,
-                card_id=d.card_id,
-                tap_datetime=d.tap_datetime.strftime("%d-%m-%Y %H:%M:%S"),
-                kept_line_no=d.kept_line_no,
-                kept_datetime=d.kept_datetime.strftime("%d-%m-%Y %H:%M:%S"),
-            )
-            for d in parsed.dedup_details[:DEDUP_SAMPLES]
-        ],
+        dedup_by_card=_dedup_by_card(parsed),
         unmatched_cards=[UnmatchedCardRead(**u) for u in unmatched],
         flag_counts=parsed.flag_counts,
         importable_rows=sum(1 for r in parsed.valid_rows if r.card_id not in unmatched_set),

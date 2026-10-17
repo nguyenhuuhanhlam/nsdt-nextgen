@@ -42,7 +42,7 @@ export default function AttendanceImport() {
   const [confirmed, setConfirmed] = useState([]);
   const [replaceExisting, setReplaceExisting] = useState(false);
   const [showErrors, setShowErrors] = useState(false);
-  const [showDedup, setShowDedup] = useState(false);
+  const [expandedDedupCard, setExpandedDedupCard] = useState(null);
   const [parsing, setParsing] = useState(false);
   const [importing, setImporting] = useState(false);
   const [error, setError] = useState('');
@@ -65,7 +65,7 @@ export default function AttendanceImport() {
       setConfirmed([]);
       setReplaceExisting(false);
       setShowErrors(false);
-      setShowDedup(false);
+      setExpandedDedupCard(null);
       setUnmatchedPage(1);
     } catch (err) {
       setError(err.message);
@@ -105,6 +105,7 @@ export default function AttendanceImport() {
     setReport(null);
     setResult(null);
     setConfirmed([]);
+    setExpandedDedupCard(null);
     setError('');
   };
 
@@ -233,34 +234,65 @@ export default function AttendanceImport() {
           {report.deduped_count > 0 && (
             <>
               <VStack gap={2}>
-                <HStack gap={3} align="center">
-                  <Text weight="bold">
-                    {report.deduped_count} lượt trùng đã gộp (giữ lại lượt quẹt đầu tiên)
-                  </Text>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    label={showDedup ? 'Ẩn chi tiết gộp trùng' : 'Xem chi tiết gộp trùng'}
-                    onClick={() => setShowDedup((s) => !s)}
-                  >
-                    {showDedup ? 'Ẩn' : 'Xem'}
-                  </Button>
-                </HStack>
-                {showDedup && (
-                  <Table
-                    data={report.dedup_samples}
-                    columns={[
-                      { key: 'line', header: 'Dòng bị gộp', width: pixel(110), align: 'center', renderCell: (r) => r.line_no },
-                      { key: 'card', header: 'Mã thẻ', width: pixel(150), renderCell: (r) => r.card_id },
-                      { key: 'time', header: 'Giờ quẹt', width: pixel(170), renderCell: (r) => r.tap_datetime },
-                      { key: 'kept', header: 'Gộp vào dòng', width: pixel(110), align: 'center', renderCell: (r) => r.kept_line_no },
-                      { key: 'kepttime', header: 'Giờ được giữ', width: pixel(170), renderCell: (r) => r.kept_datetime },
-                    ]}
-                    idKey="line_no"
-                    density="balanced"
-                    verticalAlign="middle"
-                  />
-                )}
+                <Text weight="bold">
+                  {report.deduped_count} lượt trùng đã gộp (giữ lại lượt quẹt đầu
+                  tiên) — bấm vào từng thẻ để xem các lượt gần nhau
+                </Text>
+                <Table
+                  data={report.dedup_by_card}
+                  columns={[
+                    { key: 'card', header: 'Mã thẻ', width: proportional(1), renderCell: (r) => r.card_id },
+                    { key: 'count', header: 'Số lượt bị gộp', width: pixel(140), align: 'center', renderCell: (r) => r.merged_count },
+                    {
+                      key: 'detail',
+                      header: 'Chi tiết',
+                      width: pixel(120),
+                      align: 'center',
+                      renderCell: (r) => (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          label={expandedDedupCard === r.card_id ? `Ẩn chi tiết thẻ ${r.card_id}` : `Xem chi tiết thẻ ${r.card_id}`}
+                          onClick={() => setExpandedDedupCard((c) => (c === r.card_id ? null : r.card_id))}
+                        >
+                          {expandedDedupCard === r.card_id ? 'Ẩn' : 'Xem'}
+                        </Button>
+                      ),
+                    },
+                  ]}
+                  idKey="card_id"
+                  density="balanced"
+                  verticalAlign="middle"
+                  hasHover
+                />
+                {(() => {
+                  const g = report.dedup_by_card.find((x) => x.card_id === expandedDedupCard);
+                  if (!g) return null;
+                  return (
+                    <VStack gap={2}>
+                      <Text weight="bold">
+                        Thẻ {g.card_id}: {g.merged_count} lượt bị gộp
+                      </Text>
+                      <Table
+                        data={g.samples}
+                        columns={[
+                          { key: 'line', header: 'Dòng bị gộp', width: pixel(110), align: 'center', renderCell: (r) => r.line_no },
+                          { key: 'time', header: 'Giờ quẹt', width: pixel(170), renderCell: (r) => r.tap_datetime },
+                          { key: 'kept', header: 'Gộp vào dòng', width: pixel(110), align: 'center', renderCell: (r) => r.kept_line_no },
+                          { key: 'kepttime', header: 'Giờ được giữ', width: pixel(170), renderCell: (r) => r.kept_datetime },
+                        ]}
+                        idKey="line_no"
+                        density="balanced"
+                        verticalAlign="middle"
+                      />
+                      {g.samples.length < g.merged_count && (
+                        <Text type="supporting">
+                          Hiện {g.samples.length}/{g.merged_count} lượt mẫu.
+                        </Text>
+                      )}
+                    </VStack>
+                  );
+                })()}
               </VStack>
               <Divider />
             </>
