@@ -5,6 +5,7 @@ import AttendanceFiles from './pages/attendance-files.jsx';
 import AttendanceImport from './pages/attendance-import.jsx';
 import AttendanceReview from './pages/attendance-review.jsx';
 import AttendanceUnmatched from './pages/attendance-unmatched.jsx';
+import WorkRules from './pages/work-rules.jsx';
 import Catalogs from './pages/catalogs.jsx';
 import Dashboard from './pages/dashboard.jsx';
 import Employees from './pages/employees.jsx';
@@ -23,6 +24,7 @@ export default function App() {
           <Route path="/attendance/files" element={<AttendanceFiles />} />
           <Route path="/attendance/unmatched" element={<AttendanceUnmatched />} />
           <Route path="/attendance/review" element={<AttendanceReview />} />
+          <Route path="/work-rules" element={<WorkRules />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </AppShellFrame>
