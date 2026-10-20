@@ -49,12 +49,16 @@ const NAV = [
       { label: 'Lịch sử nạp file', href: '#/attendance/files' },
       { label: 'Thẻ chưa khớp', href: '#/attendance/unmatched' },
       { label: 'Lượt quẹt cần xem lại', href: '#/attendance/review' },
-      { label: 'Quy định giờ công', href: '#/work-rules' },
     ],
   },
   {
     section: 'Lương',
     items: [{ label: 'Bảng lương tháng', href: '#/payroll', disabled: true, note: 'Sắp có' }],
+  },
+  {
+    // Hệ thống: dành cho người có thẩm quyền (phân quyền sẽ xây dựng sau)
+    section: 'Hệ thống',
+    items: [{ label: 'Quy định giờ công', href: '#/work-rules' }],
   },
 ];
 
@@ -76,7 +80,7 @@ const PALETTE_COMMANDS = [
   { id: 'attendance-files', label: 'Lịch sử nạp file chấm công', auxiliaryData: { path: '/attendance/files', keywords: ['lich su', 'cham cong'] } },
   { id: 'attendance-unmatched', label: 'Thẻ chưa khớp nhân viên', auxiliaryData: { path: '/attendance/unmatched', keywords: ['the la', 'chua khop', 'cham cong'] } },
   { id: 'attendance-review', label: 'Lượt quẹt cần xem lại', auxiliaryData: { path: '/attendance/review', keywords: ['xem lai', 'cham cong', 'canh bao'] } },
-  { id: 'work-rules', label: 'Quy định giờ công', auxiliaryData: { path: '/work-rules', keywords: ['quy dinh', 'gio cong', 'cham cong', 'cau hinh'] } },
+  { id: 'work-rules', label: 'Quy định giờ công', auxiliaryData: { path: '/work-rules', keywords: ['quy dinh', 'gio cong', 'he thong', 'cau hinh'] } },
 ];
 
 function TopBar({ onOpenPalette }) {
