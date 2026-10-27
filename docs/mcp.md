@@ -28,16 +28,23 @@ chọn tool là của AI client.
 
 ## 2. Tool giai đoạn 1 (chỉ đọc)
 
+✅ Đã triển khai (`backend/mcp_server/server.py`, test qua stdio OK):
+
 | Tool | Mô tả |
 |---|---|
 | `tim_nhan_vien` | Tìm NV theo mã NV / tên / mã thẻ / đơn vị. Trả mã NV, tên, đơn vị, chức vụ, mã thẻ, trạng thái. |
 | `xem_cham_cong` | Lượt quẹt + H1..H6 của một NV (hoặc một đơn vị) trong khoảng ngày. |
-| `xem_gio_cong_thang` | Kết quả giờ công/lương tháng của một đơn vị (khi đã có bảng kết quả). |
-| `xem_lich_lam_viec` | Giờ đóng chuyền, ngày lễ, disable theo ngày + đơn vị. |
 | `xem_thai_san` | Hồ sơ thai sản của NV / trong khoảng ngày. |
-| `xem_quy_dinh` | Bộ quy định giờ công đang áp dụng tại một ngày. |
 | `thong_ke_cham_cong` | Thống kê: thẻ chưa khớp, lượt quẹt cần xem lại, số lượt quẹt theo ngày. |
 | `truy_van_sql` | SQL SELECT tự do, có giới hạn (mục 4). |
+
+⏳ Chưa có (chờ bảng tương ứng — phần tính giờ/lương):
+
+| Tool | Chờ |
+|---|---|
+| `xem_gio_cong_thang` | bảng kết quả tính giờ/lương tháng |
+| `xem_lich_lam_viec` | bảng `work_calendar` (giờ đóng chuyền, lễ, disable) |
+| `xem_quy_dinh` | bảng `work_rule_sets` (tạm có resource `nsdt://quy-dinh-hien-hanh` với giá trị mặc định) |
 
 ## 3. Resource (từ điển dữ liệu)
 
@@ -64,6 +71,10 @@ chọn tool là của AI client.
 ## 6. Lộ trình
 
 1. Thiết kế này (xong).
-2. Triển khai server MCP giai đoạn 1 (chỉ đọc) + chạy thử với Claude Desktop.
-3. Kiểm tra độ chính xác trả lời trên các câu hỏi mẫu tiếng Việt.
+2. ✅ Triển khai server MCP giai đoạn 1 (chỉ đọc) — `backend/mcp_server/`, chạy
+   stdio hoặc HTTP (`--http --port 8001`); service `mcp` trong docker-compose;
+   test qua stdio trên DB seed + file chấm công thật 20250625.txt: 5 tool +
+   2 resource đều trả đúng, `truy_van_sql` chặn được DELETE và bảng cấm.
+3. Kiểm tra độ chính xác trả lời trên các câu hỏi mẫu tiếng Việt (dùng thử
+   với Claude Desktop / Muse qua connector).
 4. Giai đoạn 2: tool ghi + xác nhận, sau khi phần tính giờ/lương chạy ổn định.

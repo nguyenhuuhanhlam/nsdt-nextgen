@@ -31,5 +31,18 @@ services:
       db:
         condition: service_healthy
 
+  mcp:
+    build: ./backend
+    restart: unless-stopped
+    # MCP server (chỉ đọc) — Streamable HTTP nội bộ, cổng 8001
+    command: ["python", "-m", "mcp_server.server", "--http", "--host", "0.0.0.0", "--port", "8001"]
+    environment:
+      DATABASE_URL: mysql+pymysql://nsdt:${MYSQL_PASSWORD:-nsdt}@db:3306/nsdt?charset=utf8mb4
+    ports:
+      - "8001:8001"
+    depends_on:
+      db:
+        condition: service_healthy
+
 volumes:
   mysql-data:
